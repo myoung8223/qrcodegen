@@ -298,17 +298,15 @@
     let savedLogoData = localStorage.getItem('saved_qr_logo') || null;
     let userPreferredCorrection = localStorage.getItem('qr_pref_correction') || 'H';
     
-    // Load saved preferences if they exist, otherwise use standard defaults
     sizeInput.value = localStorage.getItem('qr_pref_size') || '256';
     colorDarkInput.value = localStorage.getItem('qr_pref_color_dark') || '#000000';
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
 
-    // Core state orchestration logic
     if (savedLogoData) {
         clearLogoBtn.style.display = 'inline-flex';
     } else {
-        includeLogoCheckbox.checked = false; // Override if asset doesn't exist
+        includeLogoCheckbox.checked = false; 
     }
     
     errorCorrectionSelect.value = userPreferredCorrection;
@@ -359,7 +357,6 @@
             try {
                 localStorage.setItem('saved_qr_logo', savedLogoData);
                 clearLogoBtn.style.display = 'inline-flex';
-                
                 includeLogoCheckbox.checked = true; 
                 localStorage.setItem('qr_pref_include_logo', 'true');
                 syncErrorCorrection();
@@ -398,10 +395,7 @@
             width: size,
             errorCorrectionLevel: errorCorrection,
             margin: 0, 
-            color: {
-                dark: colorDark,
-                light: colorLight
-            }
+            color: { dark: colorDark, light: colorLight }
         };
 
         QRCode.toCanvas(canvas, text, options, function (error) {
@@ -418,7 +412,6 @@
                 const img = new Image();
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
-                    
                     const ninthBlockSize = size / 3; 
 
                     // 101% Anti-aliasing golden buffer
@@ -489,33 +482,16 @@
             });
         } catch (err) {
             console.error('Failed to copy: ', err);
-            alert('Copying failed. Remember, modern clipboard operations require a secure HTTPS context or local developer setup.');
+            alert('Copying failed.');
         }
     });
 
-    // --- SERVICE WORKER OFFLINE ENGINE ---
+    // --- STANDARD NATIVE SERVICE WORKER REGISTRATION ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `
-                const CACHE_NAME = 'qr-gen-v1';
-                const ASSETS = [
-                    './',
-                    './index.html',
-                    './qrcode.min.js'
-                ];
-                self.addEventListener('install', e => {
-                    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
-                });
-                self.addEventListener('fetch', e => {
-                    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
-                });
-            `;
-            const blob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(blob);
-            
-            navigator.serviceWorker.register(swUrl, { scope: './' })
-                .then(() => console.log('PWA Service Worker Operational.'))
-                .catch(err => console.log('Service Worker Setup Skipped:', err));
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('PWA Service Worker Active.'))
+                .catch(err => console.error('SW Registration Failed:', err));
         });
     }
 </script>
