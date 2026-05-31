@@ -256,6 +256,7 @@
             justify-content: center;
             align-items: center;
             margin-top: 0.5rem;
+            overflow: auto; /* Ensures giant 1:1 sizes don't break page layouts */
         }
         canvas {
             display: block;
@@ -302,8 +303,10 @@
     </div>
 
     <div class="inline-row">
-        <div class="form-group" style="flex: 0 0 85px;">
-            <label for="sizeInput">Size (px)</label>
+        <div class="form-group" style="flex: 1 1 125px;">
+            <label class="checkbox-label" style="margin-bottom: 0.3rem;">
+                <input type="checkbox" id="displayOneToOneToggle"> Display 1:1
+            </label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
         <div class="form-group" style="flex: 1 1 145px;">
@@ -365,6 +368,7 @@
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
     const sizeInput = document.getElementById('sizeInput');
+    const displayOneToOneToggle = document.getElementById('displayOneToOneToggle');
     const manualMarginToggle = document.getElementById('manualMarginToggle');
     const marginInput = document.getElementById('marginInput');
     const logoScaleInput = document.getElementById('logoScaleInput');
@@ -385,6 +389,7 @@
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
     manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
+    displayOneToOneToggle.checked = localStorage.getItem('qr_pref_display_1to1') === 'true';
 
     // Set initial configuration field states
     marginInput.disabled = !manualMarginToggle.checked;
@@ -450,6 +455,11 @@
 
     sizeInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_size', sizeInput.value);
+        generateBtn.click();
+    });
+
+    displayOneToOneToggle.addEventListener('change', () => {
+        localStorage.setItem('qr_pref_display_1to1', displayOneToOneToggle.checked);
         generateBtn.click();
     });
     
@@ -556,31 +566,40 @@
             marginInput.value = marginPx; 
         }
 
-        // --- BOUNDED ADAPTIVE PREVIEW CALCULATION ---
-        const container = document.querySelector('.container');
-        const computedStyle = window.getComputedStyle(container);
-        const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
-        
-        // Exact real estate available above the preview card
-        const maxContentWidth = container.clientWidth - innerPadding;
-        const targetViewHeight = window.innerHeight * 0.50; // Dynamic window ceiling
-        
-        // Scale with size/window height, but strict maximum clamp to container content width
-        let previewSize = Math.min(size, targetViewHeight, maxContentWidth); 
-        
-        // Safety layout guardrails
-        if (maxContentWidth > 256) {
-            previewSize = Math.max(previewSize, 256);
+        // --- PREVIEW SIZE SIZING & BOUNDING ENGINE ---
+        let previewSize, previewPadding;
+
+        if (displayOneToOneToggle.checked) {
+            // Precise 1:1 Rendering Mode
+            previewSize = size;
+            previewPadding = marginPx;
         } else {
-            previewSize = maxContentWidth;
+            // Adaptive Viewport Sizing Bounding Calculation
+            const container = document.querySelector('.container');
+            const computedStyle = window.getComputedStyle(container);
+            const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+            
+            // Exact real estate available above the preview card
+            const maxContentWidth = container.clientWidth - innerPadding;
+            const targetViewHeight = window.innerHeight * 0.50; // Dynamic window ceiling
+            
+            // Scale with size/window height, but strict maximum clamp to container content width
+            previewSize = Math.min(size, targetViewHeight, maxContentWidth); 
+            
+            // Safety layout guardrails
+            if (maxContentWidth > 256) {
+                previewSize = Math.max(previewSize, 256);
+            } else {
+                previewSize = maxContentWidth;
+            }
+            
+            // Proportional screen padding calculation matching current export settings
+            const totalExportSize = size + (marginPx * 2);
+            previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * previewSize : 0;
         }
         
         canvas.style.width = previewSize + 'px';
         canvas.style.height = previewSize + 'px';
-        
-        // Handle proportional screen padding scaling calculation
-        const totalExportSize = size + (marginPx * 2);
-        const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * previewSize : 0;
         canvas.style.padding = previewPadding + 'px';
 
         const options = {
@@ -679,41 +698,4 @@
         if (!projectName.toLowerCase().endsWith('.png')) projectName += '.png';
 
         const exportCanvas = getExportCanvas();
-        const dataUrl = exportCanvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = projectName;
-        link.href = dataUrl;
-        link.click();
-    });
-
-    copyBtn.addEventListener('click', async () => {
-        try {
-            const exportCanvas = getExportCanvas();
-            exportCanvas.toBlob(async (blob) => {
-                const item = new ClipboardItem({ 'image/png': blob });
-                await navigator.clipboard.write([item]);
-                const originalText = copyBtn.innerHTML;
-                copyBtn.innerHTML = 'Copied!';
-                setTimeout(() => copyBtn.innerHTML = originalText, 2000);
-            });
-        } catch (err) {
-            console.error('Failed to copy: ', err);
-            alert('Copying failed.');
-        }
-    });
-
-    // --- INITIALIZE PREVIEW ON LOAD ---
-    window.addEventListener('DOMContentLoaded', () => generateBtn.click());
-
-    // --- SERVICE WORKER ---
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(() => console.log('PWA Service Worker Active.'))
-                .catch(err => console.error('SW Registration Failed:', err));
-        });
-    }
-</script>
-
-</body>
-</html>
+        const dataUrl = exportCanvas.
