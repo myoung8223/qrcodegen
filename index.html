@@ -29,7 +29,7 @@
             padding: 1.75rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 640px; /* Widened to eliminate control collisions */
+            max-width: 640px; 
             width: 100%;
             box-sizing: border-box;
         }
@@ -86,7 +86,7 @@
             font-weight: bold;
             font-size: 0.85rem;
             margin: 0; 
-            white-space: nowrap; /* Prevents text from wrapping onto two lines */
+            white-space: nowrap; 
         }
         .checkbox-label input {
             margin: 0;
@@ -580,6 +580,7 @@
             const totalActualWidth = size + (marginPx * 2);
 
             canvas.style.boxSizing = 'border-box';
+            canvas.style.aspectRatio = '1 / 1'; // Added back to force perfect square calculations
             canvas.style.height = 'auto';
 
             if (totalActualWidth > maxContentWidth) {
@@ -597,6 +598,7 @@
             // Raw Pixel Dimension Mode (Spills over browser boundaries smoothly if massive)
             const totalWidthWithPadding = size + (marginPx * 2);
             canvas.style.boxSizing = 'border-box';
+            canvas.style.aspectRatio = 'auto'; // Reset aspect ratio for raw rendering
             canvas.style.width = totalWidthWithPadding + 'px';
             canvas.style.height = totalWidthWithPadding + 'px';
             canvas.style.padding = marginPx + 'px';
