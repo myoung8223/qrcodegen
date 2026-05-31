@@ -29,9 +29,9 @@
             padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 620px; /* Elastic base layout width */
+            max-width: 520px; /* Locked maximum structural ceiling */
             width: 100%;
-            transition: max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-sizing: border-box;
         }
         h1 {
             margin-top: 0;
@@ -94,7 +94,7 @@
             cursor: pointer;
         }
         
-        /* Custom File Upload Wrapper */
+        /* Custom Styled File Upload Wrapper */
         .custom-file-wrapper {
             display: flex;
             align-items: center;
@@ -250,9 +250,12 @@
             background-color: #bd2130;
         }
         
-        /* Output Section */
+        /* Output Preview Section */
         #output {
-            text-align: center;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         canvas {
             display: block;
@@ -262,8 +265,7 @@
             margin: 0 auto;
             box-sizing: border-box;
             image-rendering: pixelated;
-            /* Adaptive dimensional layout properties handled via active runtime script context */
-            transition: background-color 0.2s, padding 0.1s ease-out, width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: background-color 0.2s, padding 0.1s ease-out;
         }
     </style>
 </head>
@@ -320,7 +322,7 @@
         <div class="form-group flex-1-2">
             <label for="errorCorrection">Redundancy</label>
             <select id="errorCorrection">
-                <option value="L">Low (~7%)</option>
+                <option value="L">Low (~7% )</option>
                 <option value="M">Medium (~15%)</option>
                 <option value="Q">Quartile (~25%)</option>
                 <option value="H" selected>High (~30%)</option>
@@ -554,19 +556,28 @@
             marginInput.value = marginPx; 
         }
 
-        // --- ADAPTIVE PREVIEW CALCULATION ENGINE ---
+        // --- BOUNDED ADAPTIVE PREVIEW CALCULATION ---
+        const container = document.querySelector('.container');
+        const computedStyle = window.getComputedStyle(container);
+        const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+        
+        // Exact real estate available above the preview card
+        const maxContentWidth = container.clientWidth - innerPadding;
         const targetViewHeight = window.innerHeight * 0.50; // Dynamic window ceiling
-        let previewSize = Math.min(size, targetViewHeight); 
-        previewSize = Math.max(previewSize, 256); // Capped safe layout minimum
+        
+        // Scale with size/window height, but strict maximum clamp to container content width
+        let previewSize = Math.min(size, targetViewHeight, maxContentWidth); 
+        
+        // Safety layout guardrails
+        if (maxContentWidth > 256) {
+            previewSize = Math.max(previewSize, 256);
+        } else {
+            previewSize = maxContentWidth;
+        }
         
         canvas.style.width = previewSize + 'px';
         canvas.style.height = previewSize + 'px';
         
-        // Elastic container horizontal expansion handler
-        const container = document.querySelector('.container');
-        const extraWidth = previewSize - 256;
-        container.style.maxWidth = (620 + extraWidth) + 'px';
-
         // Handle proportional screen padding scaling calculation
         const totalExportSize = size + (marginPx * 2);
         const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * previewSize : 0;
@@ -598,33 +609,30 @@
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
                     
-                    // 1. Establish the maximum square bounding box ceiling
+                    // Establish maximum square bounding box ceiling
                     const scalePercentage = (parseFloat(logoScaleInput.value) || 25) / 100;
                     const maxBoundingBox = size * scalePercentage; 
 
-                    // 2. Account for inner padding buffer
+                    // Account for inner padding buffer
                     const designPadding = maxBoundingBox * 0.06;
                     const maxLogoZone = maxBoundingBox - (designPadding * 2);
 
-                    // 3. Proportional Aspect Ratio Calculation Engine
+                    // Proportional Aspect Ratio Calculation Engine
                     const imgRatio = img.width / img.height;
                     let logoWidth, logoHeight;
 
                     if (imgRatio > 1) { 
-                        // Landscape assets: lock width, scale height down
                         logoWidth = maxLogoZone;
                         logoHeight = maxLogoZone / imgRatio;
                     } else { 
-                        // Portrait / Square assets: lock height, scale width down
                         logoHeight = maxLogoZone;
                         logoWidth = maxLogoZone * imgRatio;
                     }
 
-                    // Centering math coordinates
                     const logoX = (size - logoWidth) / 2;
                     const logoY = (size - logoHeight) / 2;
 
-                    // 4. Tight-Fit Rectangular Protective Mask Rendering
+                    // Tight-Fit Rectangular Protective Mask Rendering
                     const maskBleed = maxBoundingBox * 0.04; 
                     const maskWidth = logoWidth + maskBleed;
                     const maskHeight = logoHeight + maskBleed;
@@ -634,7 +642,7 @@
                     ctx.fillStyle = colorLight;
                     ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
 
-                    // 5. Draw asset distortion-free
+                    // Draw asset distortion-free
                     ctx.drawImage(img, logoX, logoY, logoWidth, logoHeight);
                     finalizeUI();
                 };
