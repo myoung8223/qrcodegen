@@ -1,12 +1,13 @@
-const CACHE_NAME = 'qr-gen-v3'; // Incremented version to force an active cache reset
+const CACHE_NAME = 'qr-gen-v4'; // Bumped to v4 to clear old layout cache
 const ASSETS = [
     './',
     './index.html',
     './qrcode.min.js',
-    './manifest.json'
+    './manifest.json',
+    './icon-192.png',
+    './icon-512.png'
 ];
 
-// 1. Install Event: Download assets and store them in local cache memory
 self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
@@ -15,7 +16,6 @@ self.addEventListener('install', e => {
     );
 });
 
-// 2. Activate Event: Clean up old caches and take control of the app instantly
 self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys().then(keys => {
@@ -30,7 +30,6 @@ self.addEventListener('activate', e => {
     );
 });
 
-// 3. Fetch Event: Serve assets from the cache first so the app works 100% offline
 self.addEventListener('fetch', e => {
     e.respondWith(
         caches.match(e.request).then(cachedResponse => {
