@@ -256,7 +256,8 @@
             justify-content: center;
             align-items: center;
             margin-top: 0.5rem;
-            overflow: auto; /* Ensures giant 1:1 sizes don't break page layouts */
+            overflow: auto; /* Generates tracking sliders for large 1:1 blowouts */
+            max-width: 100%;
         }
         canvas {
             display: block;
@@ -264,9 +265,9 @@
             background-color: #fafafa;
             border-radius: 4px;
             margin: 0 auto;
-            box-sizing: border-box;
+            box-sizing: content-box; /* Fixed layout compression bugs */
             image-rendering: pixelated;
-            transition: background-color 0.2s, padding 0.1s ease-out;
+            transition: background-color 0.2s;
         }
     </style>
 </head>
@@ -303,7 +304,7 @@
     </div>
 
     <div class="inline-row">
-        <div class="form-group" style="flex: 1 1 125px;">
+        <div class="form-group" style="flex: 1 1 130px;">
             <label class="checkbox-label" style="margin-bottom: 0.3rem;">
                 <input type="checkbox" id="displayOneToOneToggle"> Display 1:1
             </label>
@@ -488,7 +489,7 @@
         generateBtn.click(); 
     });
 
-    colorDarkInput.addEventListener('input', () => {
+    onchange = colorDarkInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_color_dark', colorDarkInput.value);
         generateBtn.click();
     });
@@ -566,41 +567,34 @@
             marginInput.value = marginPx; 
         }
 
-        // --- PREVIEW SIZE SIZING & BOUNDING ENGINE ---
-        let previewSize, previewPadding;
+        const totalActualWidth = size + (marginPx * 2);
 
+        // --- REAL ESTATE VIEWPORT SCALER ---
         if (displayOneToOneToggle.checked) {
-            // Precise 1:1 Rendering Mode
-            previewSize = size;
-            previewPadding = marginPx;
+            // True 1:1 Rendering
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            canvas.style.padding = marginPx + 'px';
         } else {
-            // Adaptive Viewport Sizing Bounding Calculation
+            // Adaptive Bounded Mode Calculation
             const container = document.querySelector('.container');
             const computedStyle = window.getComputedStyle(container);
             const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
-            
-            // Exact real estate available above the preview card
             const maxContentWidth = container.clientWidth - innerPadding;
-            const targetViewHeight = window.innerHeight * 0.50; // Dynamic window ceiling
             
-            // Scale with size/window height, but strict maximum clamp to container content width
-            previewSize = Math.min(size, targetViewHeight, maxContentWidth); 
+            const targetViewHeight = window.innerHeight * 0.50; // Ceil height constraint
             
-            // Safety layout guardrails
-            if (maxContentWidth > 256) {
-                previewSize = Math.max(previewSize, 256);
-            } else {
-                previewSize = maxContentWidth;
-            }
+            // Limit entire footprint (Modules + Margin Padding) to screen bounds
+            let displayTotalWidth = Math.min(totalActualWidth, maxContentWidth, targetViewHeight);
+            displayTotalWidth = Math.max(displayTotalWidth, Math.min(256, maxContentWidth)); // safety floor
             
-            // Proportional screen padding calculation matching current export settings
-            const totalExportSize = size + (marginPx * 2);
-            previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * previewSize : 0;
+            // Calculate proportional scale ratio
+            const scale = displayTotalWidth / totalActualWidth;
+            
+            canvas.style.width = (size * scale) + 'px';
+            canvas.style.height = (size * scale) + 'px';
+            canvas.style.padding = (marginPx * scale) + 'px';
         }
-        
-        canvas.style.width = previewSize + 'px';
-        canvas.style.height = previewSize + 'px';
-        canvas.style.padding = previewPadding + 'px';
 
         const options = {
             width: size,
@@ -628,15 +622,12 @@
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
                     
-                    // Establish maximum square bounding box ceiling
                     const scalePercentage = (parseFloat(logoScaleInput.value) || 25) / 100;
                     const maxBoundingBox = size * scalePercentage; 
 
-                    // Account for inner padding buffer
                     const designPadding = maxBoundingBox * 0.06;
                     const maxLogoZone = maxBoundingBox - (designPadding * 2);
 
-                    // Proportional Aspect Ratio Calculation Engine
                     const imgRatio = img.width / img.height;
                     let logoWidth, logoHeight;
 
@@ -651,7 +642,6 @@
                     const logoX = (size - logoWidth) / 2;
                     const logoY = (size - logoHeight) / 2;
 
-                    // Tight-Fit Rectangular Protective Mask Rendering
                     const maskBleed = maxBoundingBox * 0.04; 
                     const maskWidth = logoWidth + maskBleed;
                     const maskHeight = logoHeight + maskBleed;
@@ -661,7 +651,6 @@
                     ctx.fillStyle = colorLight;
                     ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
 
-                    // Draw asset distortion-free
                     ctx.drawImage(img, logoX, logoY, logoWidth, logoHeight);
                     finalizeUI();
                 };
