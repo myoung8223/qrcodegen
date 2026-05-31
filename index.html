@@ -698,4 +698,41 @@
         if (!projectName.toLowerCase().endsWith('.png')) projectName += '.png';
 
         const exportCanvas = getExportCanvas();
-        const dataUrl = exportCanvas.
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = projectName;
+        link.href = dataUrl;
+        link.click();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+        try {
+            const exportCanvas = getExportCanvas();
+            exportCanvas.toBlob(async (blob) => {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = 'Copied!';
+                setTimeout(() => copyBtn.innerHTML = originalText, 2000);
+            });
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            alert('Copying failed.');
+        }
+    });
+
+    // --- INITIALIZE PREVIEW ON LOAD ---
+    window.addEventListener('DOMContentLoaded', () => generateBtn.click());
+
+    // --- SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('PWA Service Worker Active.'))
+                .catch(err => console.error('SW Registration Failed:', err));
+        });
+    }
+</script>
+
+</body>
+</html>
