@@ -29,8 +29,9 @@
             padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 620px; 
+            max-width: 620px; /* Elastic base layout width */
             width: 100%;
+            transition: max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         h1 {
             margin-top: 0;
@@ -143,7 +144,7 @@
             font-size: 0.8rem;
             font-weight: bold;
             color: #495057;
-            width: 45px; /* Widened slightly to account for quarter-percent decimals cleanly */
+            width: 45px; 
             text-align: right;
         }
 
@@ -255,16 +256,14 @@
         }
         canvas {
             display: block;
-            width: 256px !important;
-            height: 256px !important;
             border: 1px dashed #ccc;
             background-color: #fafafa;
             border-radius: 4px;
             margin: 0 auto;
             box-sizing: border-box;
             image-rendering: pixelated;
-            padding: 16px; 
-            transition: background-color 0.2s, padding 0.1s ease-out;
+            /* Adaptive dimensional layout properties handled via active runtime script context */
+            transition: background-color 0.2s, padding 0.1s ease-out, width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
     </style>
 </head>
@@ -314,7 +313,7 @@
         <div class="form-group flex-1-3">
             <label for="logoScaleInput">Logo Scale</label>
             <div class="slider-wrapper">
-                <input type="range" id="logoScaleInput" min="10" max="35" step="0.1" value="25" disabled>
+                <input type="range" id="logoScaleInput" min="10" max="35" step="0.25" value="25" disabled>
                 <span id="logoScaleBadge" class="slider-val-badge">25%</span>
             </div>
         </div>
@@ -525,6 +524,13 @@
         generateBtn.click();
     });
 
+    // Reactive layout triggers on window dimension shifts
+    window.addEventListener('resize', () => {
+        if (textInput.value.trim() || textInput.placeholder) {
+            generateBtn.click();
+        }
+    });
+
     // --- QR RENDER ENGINE ---
     generateBtn.addEventListener('click', () => {
         let text = textInput.value.trim();
@@ -548,9 +554,22 @@
             marginInput.value = marginPx; 
         }
 
+        // --- ADAPTIVE PREVIEW CALCULATION ENGINE ---
+        const targetViewHeight = window.innerHeight * 0.50; // Dynamic window ceiling
+        let previewSize = Math.min(size, targetViewHeight); 
+        previewSize = Math.max(previewSize, 256); // Capped safe layout minimum
+        
+        canvas.style.width = previewSize + 'px';
+        canvas.style.height = previewSize + 'px';
+        
+        // Elastic container horizontal expansion handler
+        const container = document.querySelector('.container');
+        const extraWidth = previewSize - 256;
+        container.style.maxWidth = (620 + extraWidth) + 'px';
+
         // Handle proportional screen padding scaling calculation
         const totalExportSize = size + (marginPx * 2);
-        const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * 256 : 0;
+        const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * previewSize : 0;
         canvas.style.padding = previewPadding + 'px';
 
         const options = {
