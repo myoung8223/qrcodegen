@@ -256,9 +256,8 @@
             justify-content: center;
             align-items: center;
             margin-top: 0.5rem;
-            /* Allow huge centered canvas elements to visually bleed out 
-               smoothly rather than chopping off the edges */
             overflow: visible; 
+            box-sizing: border-box;
         }
         canvas {
             display: block;
@@ -266,7 +265,6 @@
             background-color: #fafafa;
             border-radius: 4px;
             margin: 0 auto;
-            box-sizing: content-box;
             image-rendering: pixelated;
         }
     </style>
@@ -567,31 +565,40 @@
             marginInput.value = marginPx; 
         }
 
-        // --- PREVIEW RENDERING SIZE RULES ---
+        // --- PREVIEW RENDERING SIZE & STYLE RULES ---
         if (displayOneToOneToggle.checked) {
-            // Unclamped 1:1 Display Style Rule (Blowout mode)
+            // Unclamped 1:1 Rendering Style Rule (Full Scale Mode)
             canvas.style.width = size + 'px';
             canvas.style.height = size + 'px';
             canvas.style.padding = marginPx + 'px';
             canvas.style.maxWidth = 'none';
+            canvas.style.boxSizing = 'content-box';
+            canvas.style.aspectRatio = 'auto';
         } else {
-            // Fixed Bounded Container Style Rule (Perfect Fit mode)
-            canvas.style.maxWidth = '100%';
-            canvas.style.height = 'auto';
-            
-            // Recompute dynamic scaling to match container bounds accurately
+            // Bounded Responsive Fit Mode (Constrained to Control Box Width)
             const container = document.querySelector('.container');
             const computedStyle = window.getComputedStyle(container);
             const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
             const maxContentWidth = container.clientWidth - innerPadding;
+            
+            // Absolute combined width of the generated layout
             const totalActualWidth = size + (marginPx * 2);
 
+            canvas.style.boxSizing = 'border-box';
+            canvas.style.aspectRatio = '1 / 1';
+            canvas.style.height = 'auto';
+
             if (totalActualWidth > maxContentWidth) {
+                // Squeezes down completely inside the bounds of the controls card
+                canvas.style.width = '100%';
+                canvas.style.maxWidth = maxContentWidth + 'px';
+                
                 const scalingFactor = maxContentWidth / totalActualWidth;
-                canvas.style.width = (size * scalingFactor) + 'px';
                 canvas.style.padding = (marginPx * scalingFactor) + 'px';
             } else {
-                canvas.style.width = size + 'px';
+                // If it's smaller than the card layout width, match raw pixel properties exactly
+                canvas.style.width = totalActualWidth + 'px';
+                canvas.style.maxWidth = '100%';
                 canvas.style.padding = marginPx + 'px';
             }
         }
