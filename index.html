@@ -578,23 +578,44 @@
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
                     
-                    // Dynamic scaling percentage arithmetic
+                    // 1. Establish the maximum square bounding box ceiling
                     const scalePercentage = (parseInt(logoScaleInput.value) || 25) / 100;
-                    const customLogoSize = size * scalePercentage; 
+                    const maxBoundingBox = size * scalePercentage; 
 
-                    // Inject protective background mask
-                    const maskSize = customLogoSize * 1.01;
-                    const maskPosition = (size - maskSize) / 2;
+                    // 2. Account for inner padding buffer
+                    const designPadding = maxBoundingBox * 0.06;
+                    const maxLogoZone = maxBoundingBox - (designPadding * 2);
+
+                    // 3. Proportional Aspect Ratio Calculation Engine
+                    const imgRatio = img.width / img.height;
+                    let logoWidth, logoHeight;
+
+                    if (imgRatio > 1) { 
+                        // Landscape assets: lock width, scale height down
+                        logoWidth = maxLogoZone;
+                        logoHeight = maxLogoZone / imgRatio;
+                    } else { 
+                        // Portrait / Square assets: lock height, scale width down
+                        logoHeight = maxLogoZone;
+                        logoWidth = maxLogoZone * imgRatio;
+                    }
+
+                    // Centering math coordinates
+                    const logoX = (size - logoWidth) / 2;
+                    const logoY = (size - logoHeight) / 2;
+
+                    // 4. Tight-Fit Rectangular Protective Mask Rendering
+                    const maskBleed = maxBoundingBox * 0.04; 
+                    const maskWidth = logoWidth + maskBleed;
+                    const maskHeight = logoHeight + maskBleed;
+                    const maskX = (size - maskWidth) / 2;
+                    const maskY = (size - maskHeight) / 2;
 
                     ctx.fillStyle = colorLight;
-                    ctx.fillRect(maskPosition, maskPosition, maskSize, maskSize);
+                    ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
 
-                    // Inject nested branding file asset
-                    const padding = customLogoSize * 0.06;
-                    const nestedLogoSize = customLogoSize - (padding * 2);
-                    const nestedPosition = (size - nestedLogoSize) / 2;
-
-                    ctx.drawImage(img, nestedPosition, nestedPosition, nestedLogoSize, nestedLogoSize);
+                    // 5. Draw asset distortion-free
+                    ctx.drawImage(img, logoX, logoY, logoWidth, logoHeight);
                     finalizeUI();
                 };
                 img.onerror = function() { finalizeUI(); };
