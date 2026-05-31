@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator</title>
+    <title>QR Code Generator 2026-05-31-1257</title>
     <script src="qrcode.min.js"></script>
     
     <meta name="theme-color" content="#007bff">
@@ -267,10 +267,6 @@
             box-sizing: border-box;
             image-rendering: pixelated;
             transition: background-color 0.2s;
-            
-            /* Enforce crisp 1:1 rendering aspect ratio across all browsers */
-            aspect-ratio: 1 / 1;
-            object-fit: contain;
         }
     </style>
 </head>
@@ -311,10 +307,16 @@
             <label for="sizeInput">Size (px)</label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
-        <div class="form-group" style="flex: 1 1 145px;">
-            <label class="checkbox-label" style="margin-bottom: 0.3rem;">
-                <input type="checkbox" id="manualMarginToggle"> Manual Margin (px)
+        <div class="form-group" style="flex: 1 1 150px;">
+            <label class="checkbox-label" style="margin-bottom: 0.4rem;">
+                <input type="checkbox" id="scaleToFitToggle" checked> Scale to fit
             </label>
+            <label class="checkbox-label" style="margin-bottom: 0px;">
+                <input type="checkbox" id="manualMarginToggle"> Manual Margin
+            </label>
+        </div>
+        <div class="form-group" style="flex: 0 0 90px;">
+            <label for="marginInput">Margin (px)</label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
         <div class="form-group" style="flex: 1 1 165px;">
@@ -370,6 +372,7 @@
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
     const sizeInput = document.getElementById('sizeInput');
+    const scaleToFitToggle = document.getElementById('scaleToFitToggle');
     const manualMarginToggle = document.getElementById('manualMarginToggle');
     const marginInput = document.getElementById('marginInput');
     const logoScaleInput = document.getElementById('logoScaleInput');
@@ -390,6 +393,12 @@
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
     manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
+
+    if (localStorage.getItem('qr_pref_scale_to_fit') !== null) {
+        scaleToFitToggle.checked = localStorage.getItem('qr_pref_scale_to_fit') === 'true';
+    } else {
+        scaleToFitToggle.checked = true;
+    }
 
     marginInput.disabled = !manualMarginToggle.checked;
     if (manualMarginToggle.checked) {
@@ -450,6 +459,11 @@
 
     sizeInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_size', sizeInput.value);
+        generateBtn.click();
+    });
+
+    scaleToFitToggle.addEventListener('change', () => {
+        localStorage.setItem('qr_pref_scale_to_fit', scaleToFitToggle.checked);
         generateBtn.click();
     });
     
@@ -554,18 +568,41 @@
             marginInput.value = marginPx; 
         }
 
-        // Generate canvas to full native size including margin fields
+        // Exact pixel math layout bounding logic
         const totalActualWidth = size + (marginPx * 2);
-        
-        // Let CSS aspect-ratio protect dimensions; only manipulate bounding layout boxes
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
-        canvas.style.maxWidth = totalActualWidth + 'px';
+        canvas.style.boxSizing = 'border-box';
+
+        if (scaleToFitToggle.checked) {
+            const container = document.querySelector('.container');
+            const computedStyle = window.getComputedStyle(container);
+            const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+            const maxContentWidth = container.clientWidth - innerPadding;
+            
+            if (totalActualWidth > maxContentWidth) {
+                // Hard-enforce matching width and height in pixels to preserve aspect ratio
+                canvas.style.width = maxContentWidth + 'px';
+                canvas.style.height = maxContentWidth + 'px';
+                
+                const scalingFactor = maxContentWidth / totalActualWidth;
+                canvas.style.padding = (marginPx * scalingFactor) + 'px';
+            } else {
+                canvas.style.width = totalActualWidth + 'px';
+                canvas.style.height = totalActualWidth + 'px';
+                canvas.style.padding = marginPx + 'px';
+            }
+            canvas.style.maxWidth = '100%';
+        } else {
+            // Raw Pixel Dimension Mode
+            canvas.style.width = totalActualWidth + 'px';
+            canvas.style.height = totalActualWidth + 'px';
+            canvas.style.padding = marginPx + 'px';
+            canvas.style.maxWidth = 'none';
+        }
 
         const options = {
-            width: totalActualWidth, // Core generation matches exact layout size
+            width: size,
             errorCorrectionLevel: errorCorrection,
-            margin: marginPx, // Let the library render clean native padding blocks directly
+            margin: 0, 
             color: { dark: colorDark, light: colorLight }
         };
 
@@ -605,15 +642,14 @@
                         logoWidth = maxLogoZone * imgRatio;
                     }
 
-                    // Center within the central QR zone (offsetting the rendered margin)
-                    const logoX = marginPx + (size - logoWidth) / 2;
-                    const logoY = marginPx + (size - logoHeight) / 2;
+                    const logoX = (size - logoWidth) / 2;
+                    const logoY = (size - logoHeight) / 2;
 
                     const maskBleed = maxBoundingBox * 0.04; 
                     const maskWidth = logoWidth + maskBleed;
                     const maskHeight = logoHeight + maskBleed;
-                    const maskX = marginPx + (size - maskWidth) / 2;
-                    const maskY = marginPx + (size - maskHeight) / 2;
+                    const maskX = (size - maskWidth) / 2;
+                    const maskY = (size - maskHeight) / 2;
 
                     ctx.fillStyle = colorLight;
                     ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
@@ -631,8 +667,21 @@
 
     // --- EXPORT LOGIC ---
     function getExportCanvas() {
-        // Since canvas already builds native margin directly, export matches canvas 1:1
-        return canvas;
+        const size = parseInt(sizeInput.value) || 256;
+        const quietZone = parseInt(marginInput.value) || 0; 
+        const colorLight = colorLightInput.value;
+        
+        const exportCanvas = document.createElement('canvas');
+        const exportSize = size + (quietZone * 2);
+        
+        exportCanvas.width = exportSize;
+        exportCanvas.height = exportSize;
+        const eCtx = exportCanvas.getContext('2d');
+        
+        eCtx.fillStyle = colorLight;
+        eCtx.fillRect(0, 0, exportSize, exportSize);
+        eCtx.drawImage(canvas, quietZone, quietZone);
+        return exportCanvas;
     }
 
     downloadBtn.addEventListener('click', () => {
