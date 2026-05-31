@@ -256,8 +256,9 @@
             justify-content: center;
             align-items: center;
             margin-top: 0.5rem;
-            overflow: auto; /* Generates tracking sliders for large 1:1 blowouts */
-            max-width: 100%;
+            /* Allow huge centered canvas elements to visually bleed out 
+               smoothly rather than chopping off the edges */
+            overflow: visible; 
         }
         canvas {
             display: block;
@@ -265,9 +266,8 @@
             background-color: #fafafa;
             border-radius: 4px;
             margin: 0 auto;
-            box-sizing: content-box; /* Fixed layout compression bugs */
+            box-sizing: content-box;
             image-rendering: pixelated;
-            transition: background-color 0.2s;
         }
     </style>
 </head>
@@ -489,7 +489,7 @@
         generateBtn.click(); 
     });
 
-    onchange = colorDarkInput.addEventListener('input', () => {
+    colorDarkInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_color_dark', colorDarkInput.value);
         generateBtn.click();
     });
@@ -567,33 +567,33 @@
             marginInput.value = marginPx; 
         }
 
-        const totalActualWidth = size + (marginPx * 2);
-
-        // --- REAL ESTATE VIEWPORT SCALER ---
+        // --- PREVIEW RENDERING SIZE RULES ---
         if (displayOneToOneToggle.checked) {
-            // True 1:1 Rendering
+            // Unclamped 1:1 Display Style Rule (Blowout mode)
             canvas.style.width = size + 'px';
             canvas.style.height = size + 'px';
             canvas.style.padding = marginPx + 'px';
+            canvas.style.maxWidth = 'none';
         } else {
-            // Adaptive Bounded Mode Calculation
+            // Fixed Bounded Container Style Rule (Perfect Fit mode)
+            canvas.style.maxWidth = '100%';
+            canvas.style.height = 'auto';
+            
+            // Recompute dynamic scaling to match container bounds accurately
             const container = document.querySelector('.container');
             const computedStyle = window.getComputedStyle(container);
             const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
             const maxContentWidth = container.clientWidth - innerPadding;
-            
-            const targetViewHeight = window.innerHeight * 0.50; // Ceil height constraint
-            
-            // Limit entire footprint (Modules + Margin Padding) to screen bounds
-            let displayTotalWidth = Math.min(totalActualWidth, maxContentWidth, targetViewHeight);
-            displayTotalWidth = Math.max(displayTotalWidth, Math.min(256, maxContentWidth)); // safety floor
-            
-            // Calculate proportional scale ratio
-            const scale = displayTotalWidth / totalActualWidth;
-            
-            canvas.style.width = (size * scale) + 'px';
-            canvas.style.height = (size * scale) + 'px';
-            canvas.style.padding = (marginPx * scale) + 'px';
+            const totalActualWidth = size + (marginPx * 2);
+
+            if (totalActualWidth > maxContentWidth) {
+                const scalingFactor = maxContentWidth / totalActualWidth;
+                canvas.style.width = (size * scalingFactor) + 'px';
+                canvas.style.padding = (marginPx * scalingFactor) + 'px';
+            } else {
+                canvas.style.width = size + 'px';
+                canvas.style.padding = marginPx + 'px';
+            }
         }
 
         const options = {
