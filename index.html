@@ -29,7 +29,7 @@
             padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 560px; 
+            max-width: 620px; 
             width: 100%;
         }
         h1 {
@@ -67,7 +67,7 @@
             margin-bottom: 0.75rem;
         }
         .flex-1 { flex: 1; min-width: 0; }
-        .flex-2 { flex: 2; min-width: 0; }
+        .flex-1-2 { flex: 1.2; min-width: 0; }
         .flex-1-5 { flex: 1.5; min-width: 0; }
         
         /* Top Branding Elements */
@@ -126,6 +126,26 @@
             flex: 1;
         }
         
+        /* Slider Control Group */
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            height: 34px;
+        }
+        input[type="range"] {
+            flex: 1;
+            margin: 0;
+            cursor: pointer;
+        }
+        .slider-val-badge {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #495057;
+            width: 32px;
+            text-align: right;
+        }
+
         /* Bottom Action Row */
         .action-row {
             display: flex;
@@ -183,12 +203,12 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-        input[type="number"]:disabled {
+        input[type="number"]:disabled,
+        input[type="range"]:disabled {
             background-color: #e9ecef;
             color: #6c757d;
             border-color: #ced4da;
             cursor: not-allowed;
-            font-weight: bold;
         }
 
         .button-group {
@@ -289,13 +309,20 @@
             </label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
+        <div class="form-group flex-1-2">
+            <label for="logoScaleInput">Logo Scale</label>
+            <div class="slider-wrapper">
+                <input type="range" id="logoScaleInput" min="10" max="35" value="25" disabled>
+                <span id="logoScaleBadge" class="slider-val-badge">25%</span>
+            </div>
+        </div>
         <div class="form-group flex-1-5">
             <label for="errorCorrection">Redundancy</label>
             <select id="errorCorrection">
                 <option value="L">Low (~7%)</option>
                 <option value="M">Medium (~15%)</option>
                 <option value="Q">Quartile (~25%)</option>
-                <option value="H" selected>High (~30% - Best for Logos)</option>
+                <option value="H" selected>High (~30% - Safe for Logos)</option>
             </select>
         </div>
     </div>
@@ -337,6 +364,8 @@
     const sizeInput = document.getElementById('sizeInput');
     const manualMarginToggle = document.getElementById('manualMarginToggle');
     const marginInput = document.getElementById('marginInput');
+    const logoScaleInput = document.getElementById('logoScaleInput');
+    const logoScaleBadge = document.getElementById('logoScaleBadge');
     const colorDarkInput = document.getElementById('colorDark');
     const colorLightInput = document.getElementById('colorLight');
 
@@ -346,12 +375,15 @@
     let savedManualMargin = localStorage.getItem('qr_pref_margin_val') || '16';
     
     sizeInput.value = localStorage.getItem('qr_pref_size') || '256';
+    logoScaleInput.value = localStorage.getItem('qr_pref_logo_scale_val') || '25'; // Default to a balanced 25% linear scale
+    logoScaleBadge.textContent = logoScaleInput.value + '%';
+    
     colorDarkInput.value = localStorage.getItem('qr_pref_color_dark') || '#000000';
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
     manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
 
-    // Set initial margin state
+    // Set initial configuration field states
     marginInput.disabled = !manualMarginToggle.checked;
     if (manualMarginToggle.checked) {
         marginInput.value = savedManualMargin;
@@ -366,10 +398,16 @@
     }
     
     errorCorrectionSelect.value = userPreferredCorrection;
-    syncErrorCorrection();
+    syncControlsState();
 
-    function syncErrorCorrection() {
-        if (includeLogoCheckbox.checked && savedLogoData) {
+    function syncControlsState() {
+        const logoActive = includeLogoCheckbox.checked && savedLogoData;
+        
+        // Handle slider state
+        logoScaleInput.disabled = !logoActive;
+        
+        // Force H level protection if overlaying logos
+        if (logoActive) {
             errorCorrectionSelect.value = 'H';
             errorCorrectionSelect.disabled = true; 
         } else {
@@ -403,7 +441,7 @@
 
     includeLogoCheckbox.addEventListener('change', () => {
         localStorage.setItem('qr_pref_include_logo', includeLogoCheckbox.checked);
-        syncErrorCorrection();
+        syncControlsState();
         generateBtn.click(); 
     });
 
@@ -431,6 +469,12 @@
         }
     });
 
+    logoScaleInput.addEventListener('input', () => {
+        logoScaleBadge.textContent = logoScaleInput.value + '%';
+        localStorage.setItem('qr_pref_logo_scale_val', logoScaleInput.value);
+        generateBtn.click(); // Update size scale in preview window on-the-fly
+    });
+
     colorDarkInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_color_dark', colorDarkInput.value);
         generateBtn.click();
@@ -456,7 +500,7 @@
                 clearLogoBtn.style.display = 'inline-flex';
                 includeLogoCheckbox.checked = true; 
                 localStorage.setItem('qr_pref_include_logo', 'true');
-                syncErrorCorrection();
+                syncControlsState();
                 generateBtn.click();
             } catch (error) {
                 alert('The uploaded image file is too large to store in local memory.');
@@ -475,7 +519,7 @@
         clearLogoBtn.style.display = 'none';
         includeLogoCheckbox.checked = false; 
         localStorage.setItem('qr_pref_include_logo', 'false');
-        syncErrorCorrection();
+        syncControlsState();
         generateBtn.click();
     });
 
@@ -493,7 +537,7 @@
         const colorDark = colorDarkInput.value;
         const colorLight = colorLightInput.value;
 
-        // Determine margin (Manual vs ISO)
+        // Determine padding margin settings
         let marginPx = 0;
         if (manualMarginToggle.checked) {
             marginPx = parseInt(marginInput.value) || 0;
@@ -502,7 +546,7 @@
             marginInput.value = marginPx; 
         }
 
-        // FIX: Proportional padding scaling for the screen preview canvas
+        // Handle proportional screen padding scaling calculation
         const totalExportSize = size + (marginPx * 2);
         const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * 256 : 0;
         canvas.style.padding = previewPadding + 'px';
@@ -532,16 +576,21 @@
                 const img = new Image();
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
-                    const ninthBlockSize = size / 3; 
+                    
+                    // Dynamic scaling percentage arithmetic
+                    const scalePercentage = (parseInt(logoScaleInput.value) || 25) / 100;
+                    const customLogoSize = size * scalePercentage; 
 
-                    const maskSize = ninthBlockSize * 1.01;
+                    // Inject protective background mask
+                    const maskSize = customLogoSize * 1.01;
                     const maskPosition = (size - maskSize) / 2;
 
                     ctx.fillStyle = colorLight;
                     ctx.fillRect(maskPosition, maskPosition, maskSize, maskSize);
 
-                    const padding = ninthBlockSize * 0.06;
-                    const nestedLogoSize = ninthBlockSize - (padding * 2);
+                    // Inject nested branding file asset
+                    const padding = customLogoSize * 0.06;
+                    const nestedLogoSize = customLogoSize - (padding * 2);
                     const nestedPosition = (size - nestedLogoSize) / 2;
 
                     ctx.drawImage(img, nestedPosition, nestedPosition, nestedLogoSize, nestedLogoSize);
