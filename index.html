@@ -66,9 +66,10 @@
             gap: 0.75rem; 
             margin-bottom: 0.75rem;
         }
+        .flex-0-6 { flex: 0.6; min-width: 0; }
         .flex-1 { flex: 1; min-width: 0; }
         .flex-1-2 { flex: 1.2; min-width: 0; }
-        .flex-1-5 { flex: 1.5; min-width: 0; }
+        .flex-1-3 { flex: 1.3; min-width: 0; }
         
         /* Top Branding Elements */
         .logo-header-row {
@@ -130,7 +131,7 @@
         .slider-wrapper {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             height: 34px;
         }
         input[type="range"] {
@@ -299,30 +300,30 @@
     </div>
 
     <div class="inline-row">
-        <div class="form-group flex-1">
+        <div class="form-group flex-0-6">
             <label for="sizeInput">Size (px)</label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
-        <div class="form-group flex-1">
+        <div class="form-group flex-1-2">
             <label class="checkbox-label" style="margin-bottom: 0.25rem;">
                 <input type="checkbox" id="manualMarginToggle"> Manual Margin (px)
             </label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
-        <div class="form-group flex-1-2">
+        <div class="form-group flex-1-3">
             <label for="logoScaleInput">Logo Scale</label>
             <div class="slider-wrapper">
                 <input type="range" id="logoScaleInput" min="10" max="35" value="25" disabled>
                 <span id="logoScaleBadge" class="slider-val-badge">25%</span>
             </div>
         </div>
-        <div class="form-group flex-1-5">
+        <div class="form-group flex-1-2">
             <label for="errorCorrection">Redundancy</label>
             <select id="errorCorrection">
                 <option value="L">Low (~7%)</option>
                 <option value="M">Medium (~15%)</option>
                 <option value="Q">Quartile (~25%)</option>
-                <option value="H" selected>High (~30% - Safe for Logos)</option>
+                <option value="H" selected>High (~30%)</option>
             </select>
         </div>
     </div>
@@ -375,7 +376,7 @@
     let savedManualMargin = localStorage.getItem('qr_pref_margin_val') || '16';
     
     sizeInput.value = localStorage.getItem('qr_pref_size') || '256';
-    logoScaleInput.value = localStorage.getItem('qr_pref_logo_scale_val') || '25'; // Default to a balanced 25% linear scale
+    logoScaleInput.value = localStorage.getItem('qr_pref_logo_scale_val') || '25'; 
     logoScaleBadge.textContent = logoScaleInput.value + '%';
     
     colorDarkInput.value = localStorage.getItem('qr_pref_color_dark') || '#000000';
@@ -472,7 +473,7 @@
     logoScaleInput.addEventListener('input', () => {
         logoScaleBadge.textContent = logoScaleInput.value + '%';
         localStorage.setItem('qr_pref_logo_scale_val', logoScaleInput.value);
-        generateBtn.click(); // Update size scale in preview window on-the-fly
+        generateBtn.click(); 
     });
 
     colorDarkInput.addEventListener('input', () => {
