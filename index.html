@@ -26,25 +26,25 @@
         }
         .container {
             background: #fff;
-            padding: 1.5rem; /* Tighter padding */
+            padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 520px; /* Slightly wider to fit inline buttons */
+            max-width: 520px; 
             width: 100%;
         }
         h1 {
             margin-top: 0;
-            margin-bottom: 1rem; /* Tighter margin */
+            margin-bottom: 1rem; 
             font-size: 1.4rem;
             text-align: center;
         }
         .form-group {
-            margin-bottom: 0.75rem; /* Tighter margin */
+            margin-bottom: 0.75rem; 
             display: flex;
             flex-direction: column;
         }
         label {
-            margin-bottom: 0.25rem; /* Tighter label spacing */
+            margin-bottom: 0.25rem; 
             font-weight: bold;
             font-size: 0.8rem;
         }
@@ -56,14 +56,14 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
-            height: 34px; /* Slightly shorter inputs */
+            height: 34px; 
             font-size: 0.85rem;
         }
         
         /* Layout Rows */
         .inline-row {
             display: flex;
-            gap: 0.75rem; /* Tighter gap */
+            gap: 0.75rem; 
             margin-bottom: 0.75rem;
         }
         .flex-1 { flex: 1; }
@@ -101,27 +101,11 @@
             box-sizing: border-box;
             padding-top: 0.3rem;
         }
-        .clear-logo-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 0 0.4rem;
-            font-size: 0.7rem;
-            height: 20px; 
-            border-radius: 4px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-        .clear-logo-btn:hover {
-            background-color: #bd2130;
-        }
         
-        /* Bottom Action Row - Compressed */
+        /* Bottom Action Row */
         .action-row {
             display: flex;
-            gap: 0.5rem; /* Tight gap for buttons */
+            gap: 0.5rem; 
             align-items: flex-end;
             margin-bottom: 1rem;
         }
@@ -153,14 +137,9 @@
             border-radius: 3px;
         }
         
-        /* Buttons */
-        .button-group {
-            display: flex;
-            gap: 0.5rem;
-            flex: 1;
-        }
+        /* --- BUTTON STYLES --- */
         button {
-            flex: 1;
+            font-family: inherit;
             padding: 0.5rem;
             background-color: #007bff;
             color: white;
@@ -170,29 +149,53 @@
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.2s, color 0.2s;
-            height: 36px; /* Match color picker height */
+        }
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #e0e0e0 !important;
+            color: #a0a0a0 !important;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Scoped styling for the bottom button cluster to prevent stretching the clear button */
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1;
+        }
+        .button-group button {
+            flex: 1;
+            height: 36px; 
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             line-height: 1.1;
         }
-        button:hover:not(:disabled) {
-            background-color: #0056b3;
-        }
-        button.secondary {
+        .button-group button.secondary {
             background-color: #28a745;
         }
-        button.secondary:hover:not(:disabled) {
+        .button-group button.secondary:hover:not(:disabled) {
             background-color: #218838;
         }
-        
-        /* Disabled States */
-        button:disabled, select:disabled {
-            background-color: #e0e0e0 !important;
-            color: #a0a0a0 !important;
-            cursor: not-allowed;
-            box-shadow: none;
+
+        /* Dedicated styling for the little red Clear button */
+        .clear-logo-btn {
+            background-color: #dc3545;
+            padding: 0 0.4rem;
+            font-size: 0.7rem;
+            height: 20px; 
+            border-radius: 4px;
+            display: none; /* Toggled via JS */
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+        .clear-logo-btn:hover {
+            background-color: #bd2130;
         }
         
         /* Output Section */
@@ -285,6 +288,7 @@
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const canvas = document.getElementById('qrCanvas');
+    const textInput = document.getElementById('textInput');
     
     const logoUpload = document.getElementById('logoUpload');
     const includeLogoCheckbox = document.getElementById('includeLogo');
@@ -334,6 +338,7 @@
     includeLogoCheckbox.addEventListener('change', () => {
         localStorage.setItem('qr_pref_include_logo', includeLogoCheckbox.checked);
         syncErrorCorrection();
+        if (textInput.value) generateBtn.click(); // Auto-update preview
     });
 
     sizeInput.addEventListener('input', () => {
@@ -354,13 +359,17 @@
 
         const reader = new FileReader();
         reader.onload = function(event) {
-            savedLogoData = event.target.value || event.target.result;
+            // Strictly fetch result to avoid corrupted native properties
+            savedLogoData = event.target.result;
             try {
                 localStorage.setItem('saved_qr_logo', savedLogoData);
                 clearLogoBtn.style.display = 'inline-flex';
                 includeLogoCheckbox.checked = true; 
                 localStorage.setItem('qr_pref_include_logo', 'true');
                 syncErrorCorrection();
+                
+                // Auto-update preview immediately upon upload
+                if (textInput.value) generateBtn.click();
             } catch (error) {
                 alert('The uploaded image file is too large to store in local memory. Try using a compressed image.');
                 savedLogoData = null;
@@ -377,11 +386,14 @@
         includeLogoCheckbox.checked = false; 
         localStorage.setItem('qr_pref_include_logo', 'false');
         syncErrorCorrection();
+        
+        // Auto-update preview to strip the logo off
+        if (textInput.value) generateBtn.click();
     });
 
     // --- QR RENDER ENGINE ---
     generateBtn.addEventListener('click', () => {
-        const text = document.getElementById('textInput').value;
+        const text = textInput.value;
         if (!text) {
             alert('Please enter a URL or text to generate a QR code.');
             return;
@@ -415,7 +427,6 @@
                     const ctx = canvas.getContext('2d');
                     const ninthBlockSize = size / 3; 
 
-                    // 101% Anti-aliasing golden buffer
                     const maskSize = ninthBlockSize * 1.01;
                     const maskPosition = (size - maskSize) / 2;
 
@@ -428,6 +439,11 @@
 
                     ctx.drawImage(img, nestedPosition, nestedPosition, nestedLogoSize, nestedLogoSize);
                     
+                    copyBtn.disabled = false;
+                    downloadBtn.disabled = false;
+                };
+                img.onerror = function() {
+                    console.error("Failed to render logo image.");
                     copyBtn.disabled = false;
                     downloadBtn.disabled = false;
                 };
