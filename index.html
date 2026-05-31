@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator 2026-05-31-1321</title>
+    <title>QR Code Generator</title>
     <script src="qrcode.min.js"></script>
     
     <meta name="theme-color" content="#007bff">
@@ -143,7 +143,7 @@
             font-size: 0.85rem;
             font-weight: bold;
             color: #495057;
-            width: 38px; /* Tighter badge width to save space */
+            width: 38px; 
             text-align: right;
         }
 
@@ -249,19 +249,19 @@
             background-color: #bd2130;
         }
         
-        /* Hardware Accelerated Output Preview Section */
+        /* Output Preview Section */
         #output {
             width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start; /* Ensures scale anchors tightly to the top */
+            text-align: center; /* Centers the wrapper gracefully */
+            overflow: auto; /* Allows smooth horizontal scrolling in raw 1:1 spillover mode */
             margin-top: 0.5rem;
             box-sizing: border-box;
-            overflow: auto; /* Allows smooth horizontal scrolling in raw 1:1 spillover mode */
+            padding-bottom: 0.5rem; /* Optional: tiny buffer for scrollbars */
         }
         #canvasWrapper {
             position: relative;
-            margin: 0 auto;
+            display: inline-block; /* Prevents flexbox left-clipping bug when huge! */
+            vertical-align: top;
         }
         canvas {
             display: block;
@@ -272,7 +272,7 @@
             image-rendering: pixelated;
             transition: background-color 0.2s;
             margin: 0;
-            max-width: none; /* Protect against stray CSS */
+            max-width: none;
         }
     </style>
 </head>
