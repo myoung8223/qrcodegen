@@ -29,7 +29,7 @@
             padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 520px; 
+            max-width: 540px; 
             width: 100%;
         }
         h1 {
@@ -66,8 +66,8 @@
             gap: 0.75rem; 
             margin-bottom: 0.75rem;
         }
-        .flex-1 { flex: 1; }
-        .flex-2 { flex: 2; }
+        .flex-1 { flex: 1; min-width: 0; }
+        .flex-2 { flex: 2; min-width: 0; }
         
         /* Top Branding Elements */
         .logo-header-row {
@@ -90,16 +90,39 @@
             margin: 0;
             cursor: pointer;
         }
-        .logo-controls-wrapper {
-            display: block;
+        
+        /* Custom File Upload Wrapper */
+        .custom-file-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            height: 34px;
             width: 100%;
         }
-        input[type="file"] {
-            font-size: 0.75rem;
-            width: 100%;
-            height: 34px; 
-            box-sizing: border-box;
-            padding-top: 0.3rem;
+        .custom-file-btn {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0 0.5rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #333;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+        .custom-file-btn:hover {
+            background-color: #e4e4e4;
+        }
+        #fileChosenText {
+            font-size: 0.8rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
         }
         
         /* Bottom Action Row */
@@ -160,7 +183,6 @@
             box-shadow: none;
         }
 
-        /* Scoped styling for the bottom button cluster to prevent stretching the clear button */
         .button-group {
             display: flex;
             gap: 0.5rem;
@@ -182,14 +204,13 @@
             background-color: #218838;
         }
 
-        /* Dedicated styling for the little red Clear button */
         .clear-logo-btn {
             background-color: #dc3545;
             padding: 0 0.4rem;
             font-size: 0.7rem;
             height: 20px; 
             border-radius: 4px;
-            display: none; /* Toggled via JS */
+            display: none; 
             align-items: center;
             justify-content: center;
             flex: 0 0 auto;
@@ -212,6 +233,7 @@
             margin: 0 auto;
             box-sizing: border-box;
             image-rendering: pixelated;
+            /* Padding is now controlled dynamically by JS via marginInput */
             padding: 16px; 
             transition: background-color 0.2s;
         }
@@ -233,10 +255,13 @@
                     <input type="checkbox" id="includeLogo">
                     Include Logo
                 </label>
-                <button type="button" id="clearLogoBtn" class="clear-logo-btn">Remove Logo</button>
+                <button type="button" id="clearLogoBtn" class="clear-logo-btn">Clear</button>
             </div>
-            <div class="logo-controls-wrapper">
-                <input type="file" id="logoUpload" accept="image/*">
+            
+            <div class="custom-file-wrapper">
+                <label for="logoUpload" class="custom-file-btn">Choose Logo</label>
+                <span id="fileChosenText">No file chosen</span>
+                <input type="file" id="logoUpload" accept="image/*" style="display: none;">
             </div>
         </div>
     </div>
@@ -251,13 +276,17 @@
             <label for="sizeInput">Size (px)</label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
+        <div class="form-group flex-1">
+            <label for="marginInput">Margin (px)</label>
+            <input type="number" id="marginInput" value="16" min="0" max="500">
+        </div>
         <div class="form-group flex-2">
             <label for="errorCorrection">Redundancy (Error Correction)</label>
             <select id="errorCorrection">
-                <option value="L">Low (~7% data recovery)</option>
-                <option value="M">Medium (~15% data recovery)</option>
-                <option value="Q">Quartile (~25% data recovery)</option>
-                <option value="H" selected>High (~30% data recovery - Best for Logos)</option>
+                <option value="L">Low (~7% recovery)</option>
+                <option value="M">Medium (~15% recovery)</option>
+                <option value="Q">Quartile (~25% recovery)</option>
+                <option value="H" selected>High (~30% - Best for Logos)</option>
             </select>
         </div>
     </div>
@@ -291,11 +320,13 @@
     const textInput = document.getElementById('textInput');
     
     const logoUpload = document.getElementById('logoUpload');
+    const fileChosenText = document.getElementById('fileChosenText');
     const includeLogoCheckbox = document.getElementById('includeLogo');
     const clearLogoBtn = document.getElementById('clearLogoBtn');
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
     const sizeInput = document.getElementById('sizeInput');
+    const marginInput = document.getElementById('marginInput');
     const colorDarkInput = document.getElementById('colorDark');
     const colorLightInput = document.getElementById('colorLight');
 
@@ -304,12 +335,16 @@
     let userPreferredCorrection = localStorage.getItem('qr_pref_correction') || 'H';
     
     sizeInput.value = localStorage.getItem('qr_pref_size') || '256';
+    marginInput.value = localStorage.getItem('qr_pref_margin') || '16';
     colorDarkInput.value = localStorage.getItem('qr_pref_color_dark') || '#000000';
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
 
+    // Handle Custom File Text & State on initial load
     if (savedLogoData) {
         clearLogoBtn.style.display = 'inline-flex';
+        fileChosenText.textContent = 'Saved logo active';
+        fileChosenText.style.fontStyle = 'italic';
     } else {
         includeLogoCheckbox.checked = false; 
     }
@@ -338,11 +373,16 @@
     includeLogoCheckbox.addEventListener('change', () => {
         localStorage.setItem('qr_pref_include_logo', includeLogoCheckbox.checked);
         syncErrorCorrection();
-        if (textInput.value) generateBtn.click(); // Auto-update preview
+        if (textInput.value) generateBtn.click(); 
     });
 
     sizeInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_size', sizeInput.value);
+    });
+    
+    marginInput.addEventListener('input', () => {
+        localStorage.setItem('qr_pref_margin', marginInput.value);
+        if (textInput.value) generateBtn.click(); // Update preview spacing dynamically
     });
 
     colorDarkInput.addEventListener('input', () => {
@@ -357,9 +397,11 @@
         const file = e.target.files[0];
         if (!file) return;
 
+        fileChosenText.textContent = file.name;
+        fileChosenText.style.fontStyle = 'normal';
+
         const reader = new FileReader();
         reader.onload = function(event) {
-            // Strictly fetch result to avoid corrupted native properties
             savedLogoData = event.target.result;
             try {
                 localStorage.setItem('saved_qr_logo', savedLogoData);
@@ -368,7 +410,6 @@
                 localStorage.setItem('qr_pref_include_logo', 'true');
                 syncErrorCorrection();
                 
-                // Auto-update preview immediately upon upload
                 if (textInput.value) generateBtn.click();
             } catch (error) {
                 alert('The uploaded image file is too large to store in local memory. Try using a compressed image.');
@@ -382,12 +423,13 @@
         localStorage.removeItem('saved_qr_logo');
         savedLogoData = null;
         logoUpload.value = '';
+        fileChosenText.textContent = 'No file chosen';
+        fileChosenText.style.fontStyle = 'normal';
         clearLogoBtn.style.display = 'none';
         includeLogoCheckbox.checked = false; 
         localStorage.setItem('qr_pref_include_logo', 'false');
         syncErrorCorrection();
         
-        // Auto-update preview to strip the logo off
         if (textInput.value) generateBtn.click();
     });
 
@@ -400,14 +442,18 @@
         }
 
         const size = parseInt(sizeInput.value) || 256;
+        const marginPx = parseInt(marginInput.value) || 0;
         const errorCorrection = errorCorrectionSelect.value;
         const colorDark = colorDarkInput.value;
         const colorLight = colorLightInput.value;
 
+        // Apply visual CSS margin for the web preview
+        canvas.style.padding = marginPx + 'px';
+
         const options = {
             width: size,
             errorCorrectionLevel: errorCorrection,
-            margin: 0, 
+            margin: 0, // Kept at 0 to maintain absolute center-9th math logic
             color: { dark: colorDark, light: colorLight }
         };
 
@@ -457,10 +503,10 @@
 
     function getExportCanvas() {
         const size = parseInt(sizeInput.value) || 256;
+        const quietZone = parseInt(marginInput.value) || 0; // Use user-defined margin
         const colorLight = colorLightInput.value;
         
         const exportCanvas = document.createElement('canvas');
-        const quietZone = Math.max(16, Math.round(size * 0.06)); 
         const exportSize = size + (quietZone * 2);
         
         exportCanvas.width = exportSize;
