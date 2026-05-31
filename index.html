@@ -302,16 +302,20 @@
     </div>
 
     <div class="inline-row">
-        <div class="form-group" style="flex: 1 1 130px;">
-            <label class="checkbox-label" style="margin-bottom: 0.3rem;">
-                <input type="checkbox" id="displayOneToOneToggle"> Display 1:1
-            </label>
+        <div class="form-group" style="flex: 1 1 100px;">
+            <label for="sizeInput">Size (px)</label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
-        <div class="form-group" style="flex: 1 1 145px;">
-            <label class="checkbox-label" style="margin-bottom: 0.3rem;">
-                <input type="checkbox" id="manualMarginToggle"> Manual Margin (px)
+        <div class="form-group" style="flex: 1 1 120px;">
+            <label class="checkbox-label" style="margin-bottom: 0.45rem; padding-top: 0.15rem;">
+                <input type="checkbox" id="scaleToFitToggle" checked> Scale to fit
             </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="manualMarginToggle"> Manual Margin
+            </label>
+        </div>
+        <div class="form-group" style="flex: 1 1 100px;">
+            <label for="marginInput">Margin (px)</label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
         <div class="form-group" style="flex: 1 1 165px;">
@@ -367,7 +371,7 @@
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
     const sizeInput = document.getElementById('sizeInput');
-    const displayOneToOneToggle = document.getElementById('displayOneToOneToggle');
+    const scaleToFitToggle = document.getElementById('scaleToFitToggle');
     const manualMarginToggle = document.getElementById('manualMarginToggle');
     const marginInput = document.getElementById('marginInput');
     const logoScaleInput = document.getElementById('logoScaleInput');
@@ -388,7 +392,13 @@
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
     manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
-    displayOneToOneToggle.checked = localStorage.getItem('qr_pref_display_1to1') === 'true';
+    
+    // Default scaleToFit to true if not set before
+    if (localStorage.getItem('qr_pref_scale_to_fit') !== null) {
+        scaleToFitToggle.checked = localStorage.getItem('qr_pref_scale_to_fit') === 'true';
+    } else {
+        scaleToFitToggle.checked = true;
+    }
 
     // Set initial configuration field states
     marginInput.disabled = !manualMarginToggle.checked;
@@ -409,11 +419,8 @@
 
     function syncControlsState() {
         const logoActive = includeLogoCheckbox.checked && savedLogoData;
-        
-        // Handle slider state
         logoScaleInput.disabled = !logoActive;
         
-        // Force H level protection if overlaying logos
         if (logoActive) {
             errorCorrectionSelect.value = 'H';
             errorCorrectionSelect.disabled = true; 
@@ -423,7 +430,6 @@
         }
     }
 
-    // Mathematical calculator for ISO Quiet Zone (4 Modules)
     function calculateIsoMarginPx(textToRender, size, errorLevel) {
         try {
             const qrCore = QRCode.create(textToRender, { errorCorrectionLevel: errorLevel });
@@ -457,8 +463,8 @@
         generateBtn.click();
     });
 
-    displayOneToOneToggle.addEventListener('change', () => {
-        localStorage.setItem('qr_pref_display_1to1', displayOneToOneToggle.checked);
+    scaleToFitToggle.addEventListener('change', () => {
+        localStorage.setItem('qr_pref_scale_to_fit', scaleToFitToggle.checked);
         generateBtn.click();
     });
     
@@ -535,7 +541,6 @@
         generateBtn.click();
     });
 
-    // Reactive layout triggers on window dimension shifts
     window.addEventListener('resize', () => {
         if (textInput.value.trim() || textInput.placeholder) {
             generateBtn.click();
@@ -556,7 +561,6 @@
         const colorDark = colorDarkInput.value;
         const colorLight = colorLightInput.value;
 
-        // Determine padding margin settings
         let marginPx = 0;
         if (manualMarginToggle.checked) {
             marginPx = parseInt(marginInput.value) || 0;
@@ -565,42 +569,38 @@
             marginInput.value = marginPx; 
         }
 
-        // --- PREVIEW RENDERING SIZE & STYLE RULES ---
-        if (displayOneToOneToggle.checked) {
-            // Unclamped 1:1 Rendering Style Rule (Full Scale Mode)
-            canvas.style.width = size + 'px';
-            canvas.style.height = size + 'px';
-            canvas.style.padding = marginPx + 'px';
-            canvas.style.maxWidth = 'none';
-            canvas.style.boxSizing = 'content-box';
-            canvas.style.aspectRatio = 'auto';
-        } else {
-            // Bounded Responsive Fit Mode (Constrained to Control Box Width)
+        // --- DYNAMIC RENDERING LAYOUT ENGINE ---
+        if (scaleToFitToggle.checked) {
+            // Bounded Scale to Fit Mode (Squeezes perfectly square inside the layout width)
             const container = document.querySelector('.container');
             const computedStyle = window.getComputedStyle(container);
             const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
             const maxContentWidth = container.clientWidth - innerPadding;
             
-            // Absolute combined width of the generated layout
             const totalActualWidth = size + (marginPx * 2);
 
             canvas.style.boxSizing = 'border-box';
-            canvas.style.aspectRatio = '1 / 1';
             canvas.style.height = 'auto';
 
             if (totalActualWidth > maxContentWidth) {
-                // Squeezes down completely inside the bounds of the controls card
                 canvas.style.width = '100%';
                 canvas.style.maxWidth = maxContentWidth + 'px';
                 
                 const scalingFactor = maxContentWidth / totalActualWidth;
                 canvas.style.padding = (marginPx * scalingFactor) + 'px';
             } else {
-                // If it's smaller than the card layout width, match raw pixel properties exactly
                 canvas.style.width = totalActualWidth + 'px';
                 canvas.style.maxWidth = '100%';
                 canvas.style.padding = marginPx + 'px';
             }
+        } else {
+            // Raw Pixel Dimension Mode (Spills over browser boundaries smoothly if massive)
+            const totalWidthWithPadding = size + (marginPx * 2);
+            canvas.style.boxSizing = 'border-box';
+            canvas.style.width = totalWidthWithPadding + 'px';
+            canvas.style.height = totalWidthWithPadding + 'px';
+            canvas.style.padding = marginPx + 'px';
+            canvas.style.maxWidth = 'none';
         }
 
         const options = {
@@ -717,10 +717,8 @@
         }
     });
 
-    // --- INITIALIZE PREVIEW ON LOAD ---
     window.addEventListener('DOMContentLoaded', () => generateBtn.click());
 
-    // --- SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
