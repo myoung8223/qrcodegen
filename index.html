@@ -161,7 +161,7 @@
             border-radius: 3px;
         }
         
-        /* --- BUTTON STYLES --- */
+        /* Buttons */
         button {
             font-family: inherit;
             padding: 0.5rem;
@@ -242,7 +242,7 @@
             box-sizing: border-box;
             image-rendering: pixelated;
             padding: 16px; 
-            transition: background-color 0.2s, padding 0.2s;
+            transition: background-color 0.2s, padding 0.1s ease-out;
         }
     </style>
 </head>
@@ -310,7 +310,8 @@
             <input type="color" id="colorLight" value="#ffffff">
         </div>
         <div class="button-group">
-            <button id="generateBtn" style="display:none;">Generate</button> <button id="copyBtn" class="secondary" disabled>Copy to<br>Clipboard</button>
+            <button id="generateBtn" style="display:none;">Generate</button> 
+            <button id="copyBtn" class="secondary" disabled>Copy to<br>Clipboard</button>
             <button id="downloadBtn" class="secondary" disabled>Download<br>Image</button>
         </div>
     </div>
@@ -380,19 +381,16 @@
     // Mathematical calculator for ISO Quiet Zone (4 Modules)
     function calculateIsoMarginPx(textToRender, size, errorLevel) {
         try {
-            // Using the library's internal core to get module density without drawing
             const qrCore = QRCode.create(textToRender, { errorCorrectionLevel: errorLevel });
             const moduleCount = qrCore.modules.size;
             const pixelsPerModule = size / moduleCount;
-            return Math.round(pixelsPerModule * 4); // ISO specifies 4 modules
+            return Math.round(pixelsPerModule * 4); 
         } catch (e) {
-            return 16; // Safe fallback
+            return 16; 
         }
     }
 
     // --- LIVE PREVIEW EVENT LISTENERS ---
-    
-    // As you type, update the QR live
     textInput.addEventListener('input', () => generateBtn.click());
 
     errorCorrectionSelect.addEventListener('change', () => {
@@ -420,7 +418,7 @@
         localStorage.setItem('qr_pref_manual_margin', isManual);
         
         if (isManual) {
-            marginInput.value = savedManualMargin; // Restore their last manual value
+            marginInput.value = savedManualMargin; 
         }
         generateBtn.click();
     });
@@ -481,12 +479,11 @@
         generateBtn.click();
     });
 
-    // --- QR RENDER ENGINE (Auto-Fired) ---
+    // --- QR RENDER ENGINE ---
     generateBtn.addEventListener('click', () => {
         let text = textInput.value.trim();
         const isPlaceholder = !text;
         
-        // If empty, render a visual placeholder but disable downloading
         if (isPlaceholder) {
             text = textInput.placeholder;
         }
@@ -502,11 +499,13 @@
             marginPx = parseInt(marginInput.value) || 0;
         } else {
             marginPx = calculateIsoMarginPx(text, size, errorCorrection);
-            marginInput.value = marginPx; // Display calculation to user
+            marginInput.value = marginPx; 
         }
 
-        // Apply visual CSS margin for the web preview
-        canvas.style.padding = marginPx + 'px';
+        // FIX: Proportional padding scaling for the screen preview canvas
+        const totalExportSize = size + (marginPx * 2);
+        const previewPadding = totalExportSize > 0 ? (marginPx / totalExportSize) * 256 : 0;
+        canvas.style.padding = previewPadding + 'px';
 
         const options = {
             width: size,
@@ -607,7 +606,7 @@
     // --- INITIALIZE PREVIEW ON LOAD ---
     window.addEventListener('DOMContentLoaded', () => generateBtn.click());
 
-    // --- STANDARD NATIVE SERVICE WORKER REGISTRATION ---
+    // --- SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
