@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator 2026-05-31-1257</title>
+    <title>QR Code Generator</title>
     <script src="qrcode.min.js"></script>
     
     <meta name="theme-color" content="#007bff">
@@ -256,6 +256,7 @@
             justify-content: center;
             align-items: center;
             margin-top: 0.5rem;
+            overflow: visible; 
             box-sizing: border-box;
         }
         canvas {
@@ -264,7 +265,6 @@
             background-color: #fafafa;
             border-radius: 4px;
             margin: 0 auto;
-            box-sizing: border-box;
             image-rendering: pixelated;
             transition: background-color 0.2s;
         }
@@ -568,37 +568,6 @@
             marginInput.value = marginPx; 
         }
 
-        // Exact pixel math layout bounding logic
-        const totalActualWidth = size + (marginPx * 2);
-        canvas.style.boxSizing = 'border-box';
-
-        if (scaleToFitToggle.checked) {
-            const container = document.querySelector('.container');
-            const computedStyle = window.getComputedStyle(container);
-            const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
-            const maxContentWidth = container.clientWidth - innerPadding;
-            
-            if (totalActualWidth > maxContentWidth) {
-                // Hard-enforce matching width and height in pixels to preserve aspect ratio
-                canvas.style.width = maxContentWidth + 'px';
-                canvas.style.height = maxContentWidth + 'px';
-                
-                const scalingFactor = maxContentWidth / totalActualWidth;
-                canvas.style.padding = (marginPx * scalingFactor) + 'px';
-            } else {
-                canvas.style.width = totalActualWidth + 'px';
-                canvas.style.height = totalActualWidth + 'px';
-                canvas.style.padding = marginPx + 'px';
-            }
-            canvas.style.maxWidth = '100%';
-        } else {
-            // Raw Pixel Dimension Mode
-            canvas.style.width = totalActualWidth + 'px';
-            canvas.style.height = totalActualWidth + 'px';
-            canvas.style.padding = marginPx + 'px';
-            canvas.style.maxWidth = 'none';
-        }
-
         const options = {
             width: size,
             errorCorrectionLevel: errorCorrection,
@@ -610,6 +579,38 @@
             if (error) {
                 console.error(error);
                 return;
+            }
+
+            // --- THE FIX: We move the dimension locking logic inside the callback here! ---
+            // Because QRCode.toCanvas overrides inline width/height dynamically when drawing,
+            // we must wait for it to finish, THEN apply our CSS constraints so they don't get erased.
+            const totalActualWidth = size + (marginPx * 2);
+            canvas.style.boxSizing = 'border-box';
+
+            if (scaleToFitToggle.checked) {
+                const container = document.querySelector('.container');
+                const computedStyle = window.getComputedStyle(container);
+                const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+                const maxContentWidth = container.clientWidth - innerPadding;
+                
+                if (totalActualWidth > maxContentWidth) {
+                    canvas.style.width = maxContentWidth + 'px';
+                    // The magic bullet: forcibly set height to match width to prevent vertical stretching
+                    canvas.style.height = maxContentWidth + 'px'; 
+                    
+                    const scalingFactor = maxContentWidth / totalActualWidth;
+                    canvas.style.padding = (marginPx * scalingFactor) + 'px';
+                } else {
+                    canvas.style.width = totalActualWidth + 'px';
+                    canvas.style.height = totalActualWidth + 'px';
+                    canvas.style.padding = marginPx + 'px';
+                }
+                canvas.style.maxWidth = '100%';
+            } else {
+                canvas.style.width = totalActualWidth + 'px';
+                canvas.style.height = totalActualWidth + 'px';
+                canvas.style.padding = marginPx + 'px';
+                canvas.style.maxWidth = 'none';
             }
 
             canvas.style.borderStyle = 'solid';
