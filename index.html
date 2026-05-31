@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator 2026-05-31-1257</title>
+    <title>QR Code Generator 2026-05-31-1321</title>
     <script src="qrcode.min.js"></script>
     
     <meta name="theme-color" content="#007bff">
@@ -143,7 +143,7 @@
             font-size: 0.85rem;
             font-weight: bold;
             color: #495057;
-            width: 45px; 
+            width: 38px; /* Tighter badge width to save space */
             text-align: right;
         }
 
@@ -249,24 +249,30 @@
             background-color: #bd2130;
         }
         
-        /* Output Preview Section */
+        /* Hardware Accelerated Output Preview Section */
         #output {
             width: 100%;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Ensures scale anchors tightly to the top */
             margin-top: 0.5rem;
             box-sizing: border-box;
+            overflow: auto; /* Allows smooth horizontal scrolling in raw 1:1 spillover mode */
+        }
+        #canvasWrapper {
+            position: relative;
+            margin: 0 auto;
         }
         canvas {
             display: block;
             border: 1px dashed #ccc;
             background-color: #fafafa;
             border-radius: 4px;
-            margin: 0 auto;
             box-sizing: border-box;
             image-rendering: pixelated;
             transition: background-color 0.2s;
+            margin: 0;
+            max-width: none; /* Protect against stray CSS */
         }
     </style>
 </head>
@@ -303,32 +309,32 @@
     </div>
 
     <div class="inline-row">
-        <div class="form-group" style="flex: 0 0 85px;">
+        <div class="form-group" style="flex: 0 0 80px;">
             <label for="sizeInput">Size (px)</label>
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
-        <div class="form-group" style="flex: 0 0 auto; justify-content: center;">
-            <label class="checkbox-label" style="margin-bottom: 0.4rem; white-space: normal;">
+        <div class="form-group" style="flex: 0 0 auto; justify-content: center; padding-top: 0.2rem;">
+            <label class="checkbox-label" style="margin-bottom: 0.35rem; white-space: normal;">
                 <input type="checkbox" id="scaleToFitToggle" checked> 
-                <span style="line-height: 1.15;">Scale<br>Preview</span>
+                <span style="font-size: 0.72rem; font-weight: normal; line-height: 1.1;">Scale<br>Preview</span>
             </label>
             <label class="checkbox-label" style="margin-bottom: 0px; white-space: normal;">
                 <input type="checkbox" id="manualMarginToggle"> 
-                <span style="line-height: 1.15;">Manual<br>Margin</span>
+                <span style="font-size: 0.72rem; font-weight: normal; line-height: 1.1;">Manual<br>Margin</span>
             </label>
         </div>
-        <div class="form-group" style="flex: 0 0 90px;">
-            <label for="marginInput">Margin (px)</label>
+        <div class="form-group" style="flex: 0 0 80px;">
+            <label for="marginInput">Margin</label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
-        <div class="form-group" style="flex: 1 1 165px;">
+        <div class="form-group" style="flex: 0 1 125px;">
             <label for="logoScaleInput">Logo Scale</label>
             <div class="slider-wrapper">
                 <input type="range" id="logoScaleInput" min="10" max="35" step="0.1" value="25" disabled>
                 <span id="logoScaleBadge" class="slider-val-badge">25%</span>
             </div>
         </div>
-        <div class="form-group" style="flex: 1 1 145px;">
+        <div class="form-group" style="flex: 1 1 160px;">
             <label for="errorCorrection">Redundancy</label>
             <select id="errorCorrection">
                 <option value="L">Low (~7%)</option>
@@ -356,7 +362,9 @@
     </div>
 
     <div id="output">
-        <canvas id="qrCanvas"></canvas>
+        <div id="canvasWrapper">
+            <canvas id="qrCanvas"></canvas>
+        </div>
     </div>
 </div>
 
@@ -365,6 +373,7 @@
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const canvas = document.getElementById('qrCanvas');
+    const canvasWrapper = document.getElementById('canvasWrapper');
     const textInput = document.getElementById('textInput');
     
     const logoUpload = document.getElementById('logoUpload');
@@ -570,37 +579,6 @@
             marginInput.value = marginPx; 
         }
 
-        // Exact pixel math layout bounding logic
-        const totalActualWidth = size + (marginPx * 2);
-        canvas.style.boxSizing = 'border-box';
-
-        if (scaleToFitToggle.checked) {
-            const container = document.querySelector('.container');
-            const computedStyle = window.getComputedStyle(container);
-            const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
-            const maxContentWidth = container.clientWidth - innerPadding;
-            
-            if (totalActualWidth > maxContentWidth) {
-                // Hard-enforce matching width and height in pixels to preserve aspect ratio
-                canvas.style.width = maxContentWidth + 'px';
-                canvas.style.height = maxContentWidth + 'px';
-                
-                const scalingFactor = maxContentWidth / totalActualWidth;
-                canvas.style.padding = (marginPx * scalingFactor) + 'px';
-            } else {
-                canvas.style.width = totalActualWidth + 'px';
-                canvas.style.height = totalActualWidth + 'px';
-                canvas.style.padding = marginPx + 'px';
-            }
-            canvas.style.maxWidth = '100%';
-        } else {
-            // Raw Pixel Dimension Mode
-            canvas.style.width = totalActualWidth + 'px';
-            canvas.style.height = totalActualWidth + 'px';
-            canvas.style.padding = marginPx + 'px';
-            canvas.style.maxWidth = 'none';
-        }
-
         const options = {
             width: size,
             errorCorrectionLevel: errorCorrection,
@@ -612,6 +590,45 @@
             if (error) {
                 console.error(error);
                 return;
+            }
+
+            // 1. Force true, pure 100% resolution rendering to match user settings exactly
+            const totalActualWidth = size + (marginPx * 2);
+            canvas.style.width = totalActualWidth + 'px';
+            canvas.style.height = totalActualWidth + 'px';
+            canvas.style.padding = marginPx + 'px';
+            
+            // 2. Pure Hardware Accelerated Layout Bounding Engine
+            if (scaleToFitToggle.checked) {
+                const container = document.querySelector('.container');
+                const computedStyle = window.getComputedStyle(container);
+                const innerPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+                const maxContentWidth = container.clientWidth - innerPadding;
+                
+                if (totalActualWidth > maxContentWidth) {
+                    const scale = maxContentWidth / totalActualWidth;
+                    
+                    // We lock the wrapper frame to the container layout size
+                    canvasWrapper.style.width = maxContentWidth + 'px';
+                    canvasWrapper.style.height = maxContentWidth + 'px';
+                    canvasWrapper.style.overflow = 'hidden';
+                    
+                    // Then visually scale down the pure resolution canvas 
+                    // This bypasses any buggy browser aspect ratio math entirely!
+                    canvas.style.transform = `scale(${scale})`;
+                    canvas.style.transformOrigin = 'top left';
+                } else {
+                    canvasWrapper.style.width = totalActualWidth + 'px';
+                    canvasWrapper.style.height = totalActualWidth + 'px';
+                    canvasWrapper.style.overflow = 'visible';
+                    canvas.style.transform = 'none';
+                }
+            } else {
+                // Raw Spill-Over Bounding Mode
+                canvasWrapper.style.width = totalActualWidth + 'px';
+                canvasWrapper.style.height = totalActualWidth + 'px';
+                canvasWrapper.style.overflow = 'visible';
+                canvas.style.transform = 'none';
             }
 
             canvas.style.borderStyle = 'solid';
