@@ -251,17 +251,17 @@
         
         /* Output Preview Section */
         #output {
+            position: relative;
             width: 100%;
-            text-align: center; /* Centers the wrapper gracefully */
-            overflow: auto; /* Allows smooth horizontal scrolling in raw 1:1 spillover mode */
             margin-top: 0.5rem;
             box-sizing: border-box;
-            padding-bottom: 0.5rem; /* Optional: tiny buffer for scrollbars */
         }
         #canvasWrapper {
             position: relative;
-            display: inline-block; /* Prevents flexbox left-clipping bug when huge! */
-            vertical-align: top;
+            display: block;
+            /* This magically centers the element, even if it violently overflows the parent bounds */
+            left: 50%;
+            transform: translateX(-50%);
         }
         canvas {
             display: block;
