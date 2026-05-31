@@ -29,7 +29,7 @@
             padding: 1.5rem; 
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 540px; 
+            max-width: 560px; 
             width: 100%;
         }
         h1 {
@@ -68,6 +68,7 @@
         }
         .flex-1 { flex: 1; min-width: 0; }
         .flex-2 { flex: 2; min-width: 0; }
+        .flex-1-5 { flex: 1.5; min-width: 0; }
         
         /* Top Branding Elements */
         .logo-header-row {
@@ -182,6 +183,13 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+        input[type="number"]:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            border-color: #ced4da;
+            cursor: not-allowed;
+            font-weight: bold;
+        }
 
         .button-group {
             display: flex;
@@ -233,9 +241,8 @@
             margin: 0 auto;
             box-sizing: border-box;
             image-rendering: pixelated;
-            /* Padding is now controlled dynamically by JS via marginInput */
             padding: 16px; 
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, padding 0.2s;
         }
     </style>
 </head>
@@ -277,15 +284,17 @@
             <input type="number" id="sizeInput" value="256" min="100" max="4000">
         </div>
         <div class="form-group flex-1">
-            <label for="marginInput">Margin (px)</label>
-            <input type="number" id="marginInput" value="16" min="0" max="500">
+            <label class="checkbox-label" style="margin-bottom: 0.25rem;">
+                <input type="checkbox" id="manualMarginToggle"> Manual Margin (px)
+            </label>
+            <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
-        <div class="form-group flex-2">
-            <label for="errorCorrection">Redundancy (Error Correction)</label>
+        <div class="form-group flex-1-5">
+            <label for="errorCorrection">Redundancy</label>
             <select id="errorCorrection">
-                <option value="L">Low (~7% recovery)</option>
-                <option value="M">Medium (~15% recovery)</option>
-                <option value="Q">Quartile (~25% recovery)</option>
+                <option value="L">Low (~7%)</option>
+                <option value="M">Medium (~15%)</option>
+                <option value="Q">Quartile (~25%)</option>
                 <option value="H" selected>High (~30% - Best for Logos)</option>
             </select>
         </div>
@@ -301,9 +310,8 @@
             <input type="color" id="colorLight" value="#ffffff">
         </div>
         <div class="button-group">
-            <button id="generateBtn">Generate<br>QR Code</button>
-            <button id="copyBtn" class="secondary" disabled>Copy to<br>Clipboard</button>
-            <button id="downloadBtn" class="secondary" disabled>Download</button>
+            <button id="generateBtn" style="display:none;">Generate</button> <button id="copyBtn" class="secondary" disabled>Copy to<br>Clipboard</button>
+            <button id="downloadBtn" class="secondary" disabled>Download<br>Image</button>
         </div>
     </div>
 
@@ -326,6 +334,7 @@
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
     const sizeInput = document.getElementById('sizeInput');
+    const manualMarginToggle = document.getElementById('manualMarginToggle');
     const marginInput = document.getElementById('marginInput');
     const colorDarkInput = document.getElementById('colorDark');
     const colorLightInput = document.getElementById('colorLight');
@@ -333,14 +342,20 @@
     // --- PERSISTENT USER SETTINGS ENGINE ---
     let savedLogoData = localStorage.getItem('saved_qr_logo') || null;
     let userPreferredCorrection = localStorage.getItem('qr_pref_correction') || 'H';
+    let savedManualMargin = localStorage.getItem('qr_pref_margin_val') || '16';
     
     sizeInput.value = localStorage.getItem('qr_pref_size') || '256';
-    marginInput.value = localStorage.getItem('qr_pref_margin') || '16';
     colorDarkInput.value = localStorage.getItem('qr_pref_color_dark') || '#000000';
     colorLightInput.value = localStorage.getItem('qr_pref_color_light') || '#ffffff';
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
+    manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
 
-    // Handle Custom File Text & State on initial load
+    // Set initial margin state
+    marginInput.disabled = !manualMarginToggle.checked;
+    if (manualMarginToggle.checked) {
+        marginInput.value = savedManualMargin;
+    }
+
     if (savedLogoData) {
         clearLogoBtn.style.display = 'inline-flex';
         fileChosenText.textContent = 'Saved logo active';
@@ -362,35 +377,70 @@
         }
     }
 
-    // --- PERSISTENT STATE EVENT LISTENERS ---
+    // Mathematical calculator for ISO Quiet Zone (4 Modules)
+    function calculateIsoMarginPx(textToRender, size, errorLevel) {
+        try {
+            // Using the library's internal core to get module density without drawing
+            const qrCore = QRCode.create(textToRender, { errorCorrectionLevel: errorLevel });
+            const moduleCount = qrCore.modules.size;
+            const pixelsPerModule = size / moduleCount;
+            return Math.round(pixelsPerModule * 4); // ISO specifies 4 modules
+        } catch (e) {
+            return 16; // Safe fallback
+        }
+    }
+
+    // --- LIVE PREVIEW EVENT LISTENERS ---
+    
+    // As you type, update the QR live
+    textInput.addEventListener('input', () => generateBtn.click());
+
     errorCorrectionSelect.addEventListener('change', () => {
         if (!errorCorrectionSelect.disabled) {
             userPreferredCorrection = errorCorrectionSelect.value;
             localStorage.setItem('qr_pref_correction', userPreferredCorrection);
         }
+        generateBtn.click();
     });
 
     includeLogoCheckbox.addEventListener('change', () => {
         localStorage.setItem('qr_pref_include_logo', includeLogoCheckbox.checked);
         syncErrorCorrection();
-        if (textInput.value) generateBtn.click(); 
+        generateBtn.click(); 
     });
 
     sizeInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_size', sizeInput.value);
+        generateBtn.click();
     });
     
+    manualMarginToggle.addEventListener('change', () => {
+        const isManual = manualMarginToggle.checked;
+        marginInput.disabled = !isManual;
+        localStorage.setItem('qr_pref_manual_margin', isManual);
+        
+        if (isManual) {
+            marginInput.value = savedManualMargin; // Restore their last manual value
+        }
+        generateBtn.click();
+    });
+
     marginInput.addEventListener('input', () => {
-        localStorage.setItem('qr_pref_margin', marginInput.value);
-        if (textInput.value) generateBtn.click(); // Update preview spacing dynamically
+        if (manualMarginToggle.checked) {
+            savedManualMargin = marginInput.value;
+            localStorage.setItem('qr_pref_margin_val', savedManualMargin);
+            generateBtn.click();
+        }
     });
 
     colorDarkInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_color_dark', colorDarkInput.value);
+        generateBtn.click();
     });
 
     colorLightInput.addEventListener('input', () => {
         localStorage.setItem('qr_pref_color_light', colorLightInput.value);
+        generateBtn.click();
     });
 
     logoUpload.addEventListener('change', (e) => {
@@ -409,10 +459,9 @@
                 includeLogoCheckbox.checked = true; 
                 localStorage.setItem('qr_pref_include_logo', 'true');
                 syncErrorCorrection();
-                
-                if (textInput.value) generateBtn.click();
+                generateBtn.click();
             } catch (error) {
-                alert('The uploaded image file is too large to store in local memory. Try using a compressed image.');
+                alert('The uploaded image file is too large to store in local memory.');
                 savedLogoData = null;
             }
         };
@@ -429,23 +478,32 @@
         includeLogoCheckbox.checked = false; 
         localStorage.setItem('qr_pref_include_logo', 'false');
         syncErrorCorrection();
-        
-        if (textInput.value) generateBtn.click();
+        generateBtn.click();
     });
 
-    // --- QR RENDER ENGINE ---
+    // --- QR RENDER ENGINE (Auto-Fired) ---
     generateBtn.addEventListener('click', () => {
-        const text = textInput.value;
-        if (!text) {
-            alert('Please enter a URL or text to generate a QR code.');
-            return;
+        let text = textInput.value.trim();
+        const isPlaceholder = !text;
+        
+        // If empty, render a visual placeholder but disable downloading
+        if (isPlaceholder) {
+            text = textInput.placeholder;
         }
 
         const size = parseInt(sizeInput.value) || 256;
-        const marginPx = parseInt(marginInput.value) || 0;
         const errorCorrection = errorCorrectionSelect.value;
         const colorDark = colorDarkInput.value;
         const colorLight = colorLightInput.value;
+
+        // Determine margin (Manual vs ISO)
+        let marginPx = 0;
+        if (manualMarginToggle.checked) {
+            marginPx = parseInt(marginInput.value) || 0;
+        } else {
+            marginPx = calculateIsoMarginPx(text, size, errorCorrection);
+            marginInput.value = marginPx; // Display calculation to user
+        }
 
         // Apply visual CSS margin for the web preview
         canvas.style.padding = marginPx + 'px';
@@ -453,19 +511,23 @@
         const options = {
             width: size,
             errorCorrectionLevel: errorCorrection,
-            margin: 0, // Kept at 0 to maintain absolute center-9th math logic
+            margin: 0, 
             color: { dark: colorDark, light: colorLight }
         };
 
         QRCode.toCanvas(canvas, text, options, function (error) {
             if (error) {
                 console.error(error);
-                alert('Failed to generate QR code.');
                 return;
             }
 
             canvas.style.borderStyle = 'solid';
             canvas.style.backgroundColor = colorLight;
+
+            const finalizeUI = () => {
+                copyBtn.disabled = isPlaceholder;
+                downloadBtn.disabled = isPlaceholder;
+            };
 
             if (includeLogoCheckbox.checked && savedLogoData) {
                 const img = new Image();
@@ -484,26 +546,20 @@
                     const nestedPosition = (size - nestedLogoSize) / 2;
 
                     ctx.drawImage(img, nestedPosition, nestedPosition, nestedLogoSize, nestedLogoSize);
-                    
-                    copyBtn.disabled = false;
-                    downloadBtn.disabled = false;
+                    finalizeUI();
                 };
-                img.onerror = function() {
-                    console.error("Failed to render logo image.");
-                    copyBtn.disabled = false;
-                    downloadBtn.disabled = false;
-                };
+                img.onerror = function() { finalizeUI(); };
                 img.src = savedLogoData;
             } else {
-                copyBtn.disabled = false;
-                downloadBtn.disabled = false;
+                finalizeUI();
             }
         });
     });
 
+    // --- EXPORT LOGIC ---
     function getExportCanvas() {
         const size = parseInt(sizeInput.value) || 256;
-        const quietZone = parseInt(marginInput.value) || 0; // Use user-defined margin
+        const quietZone = parseInt(marginInput.value) || 0; 
         const colorLight = colorLightInput.value;
         
         const exportCanvas = document.createElement('canvas');
@@ -515,7 +571,6 @@
         
         eCtx.fillStyle = colorLight;
         eCtx.fillRect(0, 0, exportSize, exportSize);
-        
         eCtx.drawImage(canvas, quietZone, quietZone);
         return exportCanvas;
     }
@@ -539,15 +594,18 @@
             exportCanvas.toBlob(async (blob) => {
                 const item = new ClipboardItem({ 'image/png': blob });
                 await navigator.clipboard.write([item]);
-                const originalText = copyBtn.innerText;
-                copyBtn.innerText = 'Copied!';
-                setTimeout(() => copyBtn.innerText = originalText, 2000);
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = 'Copied!';
+                setTimeout(() => copyBtn.innerHTML = originalText, 2000);
             });
         } catch (err) {
             console.error('Failed to copy: ', err);
             alert('Copying failed.');
         }
     });
+
+    // --- INITIALIZE PREVIEW ON LOAD ---
+    window.addEventListener('DOMContentLoaded', () => generateBtn.click());
 
     // --- STANDARD NATIVE SERVICE WORKER REGISTRATION ---
     if ('serviceWorker' in navigator) {
