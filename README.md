@@ -2,6 +2,10 @@
 
 A high-performance, feature-rich, fully client-side Progressive Web App (PWA) designed to generate highly customizable QR codes with seamless branding integration. Built with a focus on privacy, responsiveness, and control, this utility handles all compilation and rendering directly inside the browser—meaning your data and uploaded graphics never touch an external server.
 
+### 🌐 Live Application
+You can access and install the live PWA here:  
+👉 **[https://myoung8223.github.io/qrcodegen/](https://myoung8223.github.io/qrcodegen/)**
+
 ---
 
 ## 🚀 Features
