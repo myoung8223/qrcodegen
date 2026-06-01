@@ -59,7 +59,6 @@ This project is engineered to work seamlessly out-of-the-box with static hosting
 
 ## 📄 License & Attribution
 
-```text
 QR Code Generator PWA
 
 Generative AI prompting (Google Gemini) and testing:
@@ -73,7 +72,6 @@ Library copyright and licensing remain with the original author.
 
 Source: [https://github.com/soldair/node-qrcode](https://github.com/soldair/node-qrcode)
 License: MIT
-```
 
 ### Full Legal Text (MIT License)
 
