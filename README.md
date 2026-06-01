@@ -59,24 +59,18 @@ This project is engineered to work seamlessly out-of-the-box with static hosting
 
 ## 📄 License & Attribution
 
-QR Code Generator PWA
+### 🛠️ Main Application
+* **Project Name:** QR Code Generator PWA
+* **Generative AI Prompting (Google Gemini) & Testing:** Copyright (c) 2026 Mike Young
+* **Source Code:** [https://github.com/myoung8223/qrcodegen/](https://github.com/myoung8223/qrcodegen/)
+* **License:** [MIT License](https://opensource.org/licenses/MIT)
 
-Generative AI prompting (Google Gemini) and testing:
-Copyright (c) 2026 Mike Young
+---
 
-Source: [https://github.com/myoung8223/qrcodegen/](https://github.com/myoung8223/qrcodegen/)
-License: MIT
-    
-This application incorporates the QR code library developed by Ryan Day.
-Library copyright and licensing remain with the original author.
+### 📦 Third-Party Dependencies
+This application incorporates open-source components developed by third parties. Library copyright, ownership, and licensing remain entirely with the original author:
 
-Source: [https://github.com/soldair/node-qrcode](https://github.com/soldair/node-qrcode)
-License: MIT
-
-### Full Legal Text (MIT License)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+* **Library:** `node-qrcode`
+* **Author:** Ryan Day (soldair)
+* **Source Code:** [https://github.com/soldair/node-qrcode](https://github.com/soldair/node-qrcode)
+* **License:** [MIT License](https://opensource.org/licenses/MIT)
