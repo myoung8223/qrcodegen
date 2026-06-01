@@ -205,7 +205,8 @@
             box-shadow: none;
         }
         input[type="number"]:disabled,
-        input[type="range"]:disabled {
+        input[type="range"]:disabled,
+        input[type="checkbox"]:disabled {
             background-color: #e9ecef;
             color: #6c757d;
             border-color: #ced4da;
@@ -281,17 +282,23 @@
     <h1>QR Code Generator</h1>
     
     <div class="inline-row">
-        <div class="form-group flex-1">
+        <div class="form-group" style="flex: 0 1 220px;">
             <label for="projectName">Project Name (File Name)</label>
             <input type="text" id="projectName" placeholder="my-qr-code">
         </div>
         <div class="form-group flex-1">
             <div class="logo-header-row">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="includeLogo">
-                    Include Logo
-                </label>
-                <button type="button" id="clearLogoBtn" class="clear-logo-btn">Delete Saved Logo</button>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="includeLogo">
+                        Include Logo
+                    </label>
+                    <label class="checkbox-label" style="font-weight: normal;">
+                        <input type="checkbox" id="transparentLogo" disabled>
+                        Enable Transparency
+                    </label>
+                </div>
+                <button type="button" id="clearLogoBtn" class="clear-logo-btn">Clear Logo</button>
             </div>
             
             <div class="custom-file-wrapper">
@@ -326,7 +333,6 @@
             <label for="marginInput">Margin</label>
             <input type="number" id="marginInput" value="16" min="0" max="500" disabled>
         </div>
-        
         <div class="form-group" style="flex: 0 1 110px;">
             <label for="logoScaleInput">Logo Scale</label>
             <div class="slider-wrapper">
@@ -379,6 +385,7 @@
     const logoUpload = document.getElementById('logoUpload');
     const fileChosenText = document.getElementById('fileChosenText');
     const includeLogoCheckbox = document.getElementById('includeLogo');
+    const transparentLogoCheckbox = document.getElementById('transparentLogo');
     const clearLogoBtn = document.getElementById('clearLogoBtn');
     const errorCorrectionSelect = document.getElementById('errorCorrection');
     
@@ -405,6 +412,13 @@
     includeLogoCheckbox.checked = localStorage.getItem('qr_pref_include_logo') === 'true';
     manualMarginToggle.checked = localStorage.getItem('qr_pref_manual_margin') === 'true';
 
+    let savedTransparent = localStorage.getItem('qr_pref_transparent_logo');
+    if (savedTransparent !== null) {
+        transparentLogoCheckbox.checked = savedTransparent === 'true';
+    } else {
+        transparentLogoCheckbox.checked = false; // Default to solid mask protecting the barcode
+    }
+
     if (localStorage.getItem('qr_pref_scale_to_fit') !== null) {
         scaleToFitToggle.checked = localStorage.getItem('qr_pref_scale_to_fit') === 'true';
     } else {
@@ -430,6 +444,7 @@
     function syncControlsState() {
         const logoActive = includeLogoCheckbox.checked && savedLogoData;
         logoScaleInput.disabled = !logoActive;
+        transparentLogoCheckbox.disabled = !logoActive;
         
         if (logoActive) {
             errorCorrectionSelect.value = 'H';
@@ -466,6 +481,11 @@
         localStorage.setItem('qr_pref_include_logo', includeLogoCheckbox.checked);
         syncControlsState();
         generateBtn.click(); 
+    });
+
+    transparentLogoCheckbox.addEventListener('change', () => {
+        localStorage.setItem('qr_pref_transparent_logo', transparentLogoCheckbox.checked);
+        generateBtn.click();
     });
 
     sizeInput.addEventListener('input', () => {
@@ -592,13 +612,11 @@
                 return;
             }
 
-            // 1. Force true, pure 100% resolution rendering to match user settings exactly
             const totalActualWidth = size + (marginPx * 2);
             canvas.style.width = totalActualWidth + 'px';
             canvas.style.height = totalActualWidth + 'px';
             canvas.style.padding = marginPx + 'px';
             
-            // 2. Pure Hardware Accelerated Layout Bounding Engine
             if (scaleToFitToggle.checked) {
                 const container = document.querySelector('.container');
                 const computedStyle = window.getComputedStyle(container);
@@ -607,14 +625,9 @@
                 
                 if (totalActualWidth > maxContentWidth) {
                     const scale = maxContentWidth / totalActualWidth;
-                    
-                    // We lock the wrapper frame to the container layout size
                     canvasWrapper.style.width = maxContentWidth + 'px';
                     canvasWrapper.style.height = maxContentWidth + 'px';
                     canvasWrapper.style.overflow = 'hidden';
-                    
-                    // Then visually scale down the pure resolution canvas 
-                    // This bypasses any buggy browser aspect ratio math entirely!
                     canvas.style.transform = `scale(${scale})`;
                     canvas.style.transformOrigin = 'top left';
                 } else {
@@ -624,7 +637,6 @@
                     canvas.style.transform = 'none';
                 }
             } else {
-                // Raw Spill-Over Bounding Mode
                 canvasWrapper.style.width = totalActualWidth + 'px';
                 canvasWrapper.style.height = totalActualWidth + 'px';
                 canvasWrapper.style.overflow = 'visible';
@@ -670,8 +682,11 @@
                     const maskX = (size - maskWidth) / 2;
                     const maskY = (size - maskHeight) / 2;
 
-                    ctx.fillStyle = colorLight;
-                    ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
+                    // Draw protective background color UNLESS "Transparent" is checked
+                    if (!transparentLogoCheckbox.checked) {
+                        ctx.fillStyle = colorLight;
+                        ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
+                    }
 
                     ctx.drawImage(img, logoX, logoY, logoWidth, logoHeight);
                     finalizeUI();
