@@ -672,6 +672,10 @@ License: MIT
                 const img = new Image();
                 img.onload = function() {
                     const ctx = canvas.getContext('2d');
+
+                    // turn the browser's high-quality anti-aliasing back on right before drawing the logo
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
                     
                     const scalePercentage = (parseFloat(logoScaleInput.value) || 25) / 100;
                     const maxBoundingBox = size * scalePercentage; 
